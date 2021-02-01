@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.util.DateUtil;
-import com.lc.plugin.sink.file.FileSink;
 import com.lc.plugin.sink.file.config.FileConfig;
 
 /**
@@ -28,7 +27,7 @@ public class FileService {
 	/**
 	 * 日志工具
 	 */
-	private static final Logger log=LoggerFactory.getLogger(FileSink.class);
+	private static final Logger log=LoggerFactory.getLogger(FileService.class);
 	
 	/**
 	 * 日志文件命名计数器

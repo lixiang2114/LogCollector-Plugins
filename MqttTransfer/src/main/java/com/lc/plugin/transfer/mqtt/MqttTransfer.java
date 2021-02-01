@@ -75,8 +75,8 @@ public class MqttTransfer extends TransferPluginAdapter {
 	
 	@Override
 	public Object stop(Object params) throws Exception {
+		if(null!=tokenScheduler)tokenScheduler.stopTokenScheduler();
 		mqttClient.unsubscribe(mqttConfig.getTopic());
-		tokenScheduler.stopTokenScheduler();
 		mqttClient.disconnectForcibly();
 		flow.transferStart=false;
 		mqttClient.close(true);

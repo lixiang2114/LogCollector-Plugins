@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLSocketFactory;
@@ -138,6 +139,16 @@ public class MqttConfig {
 	private Integer maxInflight;
 	
 	/**
+	 * 发送失败后最大等待时间间隔
+	 */
+	public Long failMaxWaitMills;
+	
+	/**
+	 * 发送失败后最大重试次数
+	 */
+	public Integer maxRetryTimes;
+	
+	/**
 	 * MqttSink断开连接后是否需要Mqtt服务端仍然保持会话数据
 	 */
 	private Boolean cleanSession;
@@ -146,6 +157,11 @@ public class MqttConfig {
 	 * MqttSink与Mqtt服务端保持长连接的心跳间隔时间
 	 */
 	private Integer keepAliveInterval;
+	
+	/**
+	 * 上次发送失败任务表
+	 */
+	public Set<Object> preFailSinkSet;
 	
 	/**
 	 * MqttSink连接Mqtt服务端的超时时间(下发超时时间)
@@ -221,6 +237,7 @@ public class MqttConfig {
 	
 	public MqttConfig(Flow flow){
 		this.sinkPath=flow.sinkPath;
+		this.preFailSinkSet=flow.preFailSinkSet;
 		this.config=PropertiesReader.getProperties(new File(sinkPath,"sink.properties"));
 	}
 	
@@ -334,6 +351,8 @@ public class MqttConfig {
 		String clientKeyFileStr=config.getProperty("clientKeyFile");
 		String cleanSessionStr=config.getProperty("cleanSession");
 		String persistenceStr=config.getProperty("persistenceType");
+		String maxRetryTimesStr=config.getProperty("maxRetryTimes");
+		String failMaxWaitMillStr=config.getProperty("failMaxWaitMills");
 		String keepAliveIntervalStr=config.getProperty("keepAliveInterval");
 		String clientCaPasswordStr=config.getProperty("clientCaPassword");
 		String connectionTimeoutStr=config.getProperty("connectionTimeout");
@@ -422,6 +441,20 @@ public class MqttConfig {
 		if(null!=clientKeyFileStr) {
 			String clientKeyFiles=clientKeyFileStr.trim();
 			if(0!=clientKeyFiles.length()) clientKeyFile=new File(sinkPath,"certs/"+clientKeyFiles);
+		}
+		
+		if(null==maxRetryTimesStr) {
+			maxRetryTimes=3;
+		}else{
+			String maxRetryTimess=maxRetryTimesStr.trim();
+			maxRetryTimes=0==maxRetryTimess.length()?3:Integer.parseInt(maxRetryTimess);
+		}
+		
+		if(null==failMaxWaitMillStr) {
+			failMaxWaitMills=2000L;
+		}else{
+			String failMaxWaitMillss=failMaxWaitMillStr.trim();
+			failMaxWaitMills=0==failMaxWaitMillss.length()?2000L:Long.parseLong(failMaxWaitMillss);
 		}
 		
 		if(null!=keepAliveIntervalStr) {
@@ -660,10 +693,13 @@ public class MqttConfig {
 		map.put("expireFactor", expireFactor);
 		map.put("clientKeyFile", clientKeyFile);
 		map.put("protocolType", protocolType);
+		map.put("maxRetryTimes", maxRetryTimes);
 		map.put("tokenFromPass", tokenFromPass);
 		map.put("clientId", mqttClient.getClientId());
 		map.put("hostList", Arrays.toString(hostList));
+		map.put("failMaxWaitMills", failMaxWaitMills);
 		map.put("clientCaPassword", clientCaPassword);
+		map.put("preFailSinkSetSize", preFailSinkSet.size());
 		map.put("startTokenScheduler", startTokenScheduler);
 		map.put("userName", mqttConnectOptions.getUserName());
 		map.put("maxInflight", mqttConnectOptions.getMaxInflight());

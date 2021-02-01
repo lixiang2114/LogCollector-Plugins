@@ -1,10 +1,7 @@
 package com.lc.plugin.sink.mqtt;
 
 import java.io.File;
-import java.nio.charset.Charset;
 
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +9,7 @@ import com.github.lixiang2114.flow.comps.Channel;
 import com.github.lixiang2114.flow.plugins.adapter.SinkPluginAdapter;
 import com.lc.plugin.sink.mqtt.config.MqttConfig;
 import com.lc.plugin.sink.mqtt.scheduler.TokenScheduler;
+import com.lc.plugin.sink.mqtt.service.MqttService;
 
 /**
  * @author Lixiang
@@ -19,14 +17,14 @@ import com.lc.plugin.sink.mqtt.scheduler.TokenScheduler;
  */
 public class MqttSink extends SinkPluginAdapter{
 	/**
-	 * MQTT客户端
-	 */
-	private MqttClient mqttClient;
-	
-	/**
 	 * MQTT客户端配置
 	 */
 	private MqttConfig mqttConfig;
+	
+	/**
+	 * MQTT服务
+	 */
+	private MqttService mqttService;
 	
 	/**
 	 * Token调度器
@@ -50,7 +48,8 @@ public class MqttSink extends SinkPluginAdapter{
 		this.mqttConfig=new MqttConfig(flow);
 		mqttConfig.config();
 		
-		mqttClient=mqttConfig.connectMqttServer();
+		mqttConfig.connectMqttServer();
+		this.mqttService=new MqttService(mqttConfig);
 		
 		if(null==mqttConfig.startTokenScheduler || !mqttConfig.startTokenScheduler){
 			log.info("token expire is -1,no need to start the scheduler!");
@@ -72,11 +71,14 @@ public class MqttSink extends SinkPluginAdapter{
 		}
 		
 		flow.sinkStart=true;
+		if(!mqttService.preSend()) return false;
+		
 		try{
 			String message=null;
 			while(flow.sinkStart) {
 				if(null==(message=filterToSinkChannel.get())) continue;
-				sendMqttMsg(message);
+				Boolean flag=mqttService.sendMsg(message);
+				if(null!=flag && !flag) return false;
 			}
 		}catch(InterruptedException e){
 			log.warn("sink plugin is interrupted while waiting...");
@@ -98,36 +100,5 @@ public class MqttSink extends SinkPluginAdapter{
 		if(null==params || 0==params.length) return mqttConfig.collectRealtimeParams();
 		if(params.length<2) return mqttConfig.getFieldValue((String)params[0]);
 		return mqttConfig.setFieldValue((String)params[0],params[1]);
-	}
-	
-	/**
-	 * 发送Mqtt消息
-	 * @param msg 消息内容
-	 * @return 是否发送成功
-	 * @throws InterruptedException
-	 */
-	private Boolean sendMqttMsg(String msg) throws InterruptedException{
-		if(null==msg) return null;
-		if(0==(msg=msg.trim()).length()) return null;
-		
-		MqttMessage message = new MqttMessage(msg.getBytes(Charset.forName("UTF-8")));
-		message.setRetained(mqttConfig.getRetained());
-		message.setQos(mqttConfig.getQos());
-		
-		boolean loop=false;
-		int times=0;
-		do{
-			try{
-				mqttClient.publish(mqttConfig.getTopic(), message);
-				loop=false;
-			}catch(Exception e) {
-				times++;
-				loop=true;
-				Thread.sleep(2000L);
-				log.error("publish occur excepton: "+e.getMessage());
-			}
-		}while(loop && times<3);
-		
-		return !loop;
 	}
 }

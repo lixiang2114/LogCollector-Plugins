@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.lixiang2114.flow.comps.Channel;
 import com.lc.plugin.transfer.file.config.FileConfig;
 
 /**
@@ -68,7 +69,7 @@ public class FileService {
 	/**
 	 * 启动转存日志服务
 	 */
-	public Object startLogTransferSave(Object transferToETLChannel) {
+	public Object startLogTransferSave(Channel<String> transferToETLChannel) {
 		BufferedWriter bw=null;
 		LineNumberReader lnr=null;
 		log.info("start transfer save process...");

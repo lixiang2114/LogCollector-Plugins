@@ -32,6 +32,11 @@ public class FileConfig {
 	public Flow flow;
 	
 	/**
+	 * tail进程ID文件路径
+	 */
+	public File tailPidPath;
+	
+	/**
 	 * 插件运行时路径
 	 */
 	public File pluginPath;
@@ -92,6 +97,7 @@ public class FileConfig {
 		this.flow=flow;
 		this.transferPath=flow.sharePath;
 		this.pluginPath=flow.transferPath;
+		this.tailPidPath=new File(pluginPath,"tail/pid");
 	}
 	
 	/**

@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.comps.Channel;
+import com.github.lixiang2114.flow.util.ApplicationUtil;
+import com.github.lixiang2114.flow.util.FileUtil;
 import com.lc.plugin.transfer.file.config.FileConfig;
 
 /**
@@ -25,6 +27,11 @@ public class FileService {
 	private Runtime runtime;
 	
 	/**
+	 * FileSource配置
+	 */
+	private FileConfig fileConfig;
+	
+	/**
 	 * Tailf子进程
 	 */
 	private Process tailfSubProcess;
@@ -33,16 +40,6 @@ public class FileService {
 	 * Tailf启动命令
 	 */
 	private String tailfStartCommand;
-	
-	/**
-	 * Tailf停止命令
-	 */
-	private String tailfStopCommand;
-	
-	/**
-	 * FileSource配置
-	 */
-	private FileConfig fileConfig;
 	
 	/**
 	 * 日志工具
@@ -56,10 +53,8 @@ public class FileService {
 		runtime=Runtime.getRuntime();
 		
 		if(FileConfig.isWin){
-			tailfStopCommand="taskkill /F /IM tailf.exe";
 			tailfStartCommand=FileConfig.winTailfCmd+" "+fileConfig.appLogFile;
 		}else{
-			tailfStopCommand="pkill tail";
 			tailfStartCommand="tail -F "+fileConfig.appLogFile;
 		}
 		
@@ -77,6 +72,8 @@ public class FileService {
 		try {
 			String line=null;
 			tailfSubProcess=runtime.exec(tailfStartCommand);
+			Long tailfPid=ApplicationUtil.getProcessID(tailfSubProcess);
+			if(null!=tailfPid) FileUtil.overrideWriteFile(fileConfig.tailPidPath, tailfPid.toString());
 			lnr=new LineNumberReader(new InputStreamReader(tailfSubProcess.getInputStream()));
 			
 			out:while(fileConfig.flow.transferStart){
@@ -130,16 +127,9 @@ public class FileService {
 	public Boolean stopLogTransferSave(Object params) {
 		log.info("stop transfer save process...");
 		if(!tailfSubProcess.isAlive()) return true;
-		
 		fileConfig.flow.transferStart=false;
-		if((tailfSubProcess.destroyForcibly()).isAlive()){
-			try {
-				runtime.exec(tailfStopCommand);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		
+		Boolean sucKilled=ApplicationUtil.forceKillProcess(tailfSubProcess);
+		if(null!=sucKilled && sucKilled) fileConfig.tailPidPath.delete();
 		return tailfSubProcess.isAlive();
 	}
 }

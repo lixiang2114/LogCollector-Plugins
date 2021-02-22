@@ -42,7 +42,7 @@ public class FileService {
 		if(null!=randomFile) randomFile.close();
 		String curFilePath=fileConfig.loggerFile.getAbsolutePath();
 		
-		fileConfig.loggerFile.delete();
+		if(fileConfig.delOnReaded)fileConfig.loggerFile.delete();
 		int lastIndex=curFilePath.lastIndexOf(".");
 		int newIndex=Integer.parseInt(curFilePath.substring(lastIndex+1))+1;
 		fileConfig.loggerFile=new File(curFilePath.substring(0,lastIndex+1)+newIndex);

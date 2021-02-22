@@ -39,7 +39,7 @@ public class FileConfig {
 	public File transferPath;
 	
 	/**
-	 * 实时读取推送的日志文件
+	 * 缓冲日志文件
 	 */
 	public File loggerFile;
 	
@@ -52,6 +52,11 @@ public class FileConfig {
 	 * 实时文件已经读取的字节数量
 	 */
 	public long byteNumber;
+	
+	/**
+	 * 缓冲日志文件被读完后自动删除
+	 */
+	public Boolean delOnReaded;
 	
 	/**
 	 * 日志(检查点)配置
@@ -99,10 +104,13 @@ public class FileConfig {
 		
 		log.info("realTime logger file is: "+loggerFile.getAbsolutePath());
 		
+		//是否自动删除缓冲日志文件
+		delOnReaded=Boolean.parseBoolean(loggerConfig.getProperty("delOnReaded","true").trim());
+		
 		//实时自动推送的日志文件检查点
-		lineNumber=Integer.parseInt(loggerConfig.getProperty("lineNumber","0"));
+		lineNumber=Integer.parseInt(loggerConfig.getProperty("lineNumber","0").trim());
 		log.info("lineNumber is: "+lineNumber);
-		byteNumber=Integer.parseInt(loggerConfig.getProperty("byteNumber","0"));
+		byteNumber=Integer.parseInt(loggerConfig.getProperty("byteNumber","0").trim());
 		log.info("byteNumber is: "+byteNumber);
 		
 		return this;
@@ -202,6 +210,7 @@ public class FileConfig {
 		map.put("pluginPath", pluginPath);
 		map.put("lineNumber", lineNumber);
 		map.put("byteNumber", byteNumber);
+		map.put("delOnReaded", delOnReaded);
 		return map.toString();
 	}
 }

@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.comps.Flow;
-import com.github.lixiang2114.flow.context.Context;
 import com.github.lixiang2114.flow.context.SizeUnit;
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.github.lixiang2114.flow.util.PropertiesReader;
@@ -97,7 +96,7 @@ public class FileConfig {
 		this.flow=flow;
 		this.transferPath=flow.sharePath;
 		this.pluginPath=flow.transferPath;
-		this.tailPidPath=new File(pluginPath,"tail/pid");
+		this.tailPidPath=new File(pluginPath,"tail/logs/pid");
 	}
 	
 	/**
@@ -232,9 +231,9 @@ public class FileConfig {
 	/**
 	 * 查找WindowNT下的tailf命令
 	 */
-	public static void configWinTailfCmd() {
+	public void configWinTailfCmd() {
 		if(!isWin) return;
-		File tailfCmd=new File(Context.projectFile,"bin/tailf.exe");
+		File tailfCmd=new File(pluginPath,"tail/bin/tailf.exe");
 		if(tailfCmd.exists()) {
 			winTailfCmd=tailfCmd.getAbsolutePath();
 		}else{

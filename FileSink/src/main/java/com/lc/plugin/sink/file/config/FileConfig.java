@@ -93,7 +93,12 @@ public class FileConfig {
 			long curTimeInMills=System.currentTimeMillis();
 			for(File file:fileDir.listFiles()) if(curTimeInMills-Files.getFileAttributeView(Paths.get(file.toURI()), BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS).readAttributes().creationTime().toMillis()>=expireInMills) file.delete();
 			
-			if(!logFile.exists()) logFile.createNewFile();
+			if(!logFile.exists()) {
+				File tmpFile=new File(fileDir,curTimeInMills+"");
+				tmpFile.createNewFile();
+				tmpFile.renameTo(logFile);
+			}
+			
 			logFileStream=Files.newOutputStream(logFile.toPath(), StandardOpenOption.APPEND);
 			createTime=DateUtil.millSecondsToCalendar(logFile.lastModified());
 		}catch(IOException e){

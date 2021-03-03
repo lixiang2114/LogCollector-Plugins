@@ -3,6 +3,8 @@ package com.lc.plugin.sink.mongo.service;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.bson.Document;
@@ -11,6 +13,10 @@ import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.lc.plugin.sink.mongo.config.MdbConfig;
+import com.lc.plugin.sink.mongo.dto.CollectionMapper;
+import com.lc.plugin.sink.mongo.dto.CollectionWrapper;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 
 /**
  * @author Lixiang
@@ -46,24 +52,32 @@ public class MdbService {
 	 */
 	public boolean preSend() throws InterruptedException {
 		if(0==mdbConfig.preFailSinkSet.size())  return true;
-		List<Document> sinkedList=mdbConfig.preFailSinkSet.stream().map(e->{return (Document)e;}).collect(Collectors.toList());
 		
-		boolean loop=false;
-		int times=0;
-		do{
-			try{
-				mdbConfig.mongoCollection.insertMany(sinkedList);
-				loop=false;
-			}catch(Exception e) {
-				times++;
-				loop=true;
-				Thread.sleep(mdbConfig.failMaxWaitMills);
-				log.error("send occur excepton: "+e.getMessage());
+		List<CollectionMapper<Document>> sinkedList=mdbConfig.preFailSinkSet.stream().map(e->{return (CollectionMapper<Document>)e;}).collect(Collectors.toList());
+		ArrayList<Integer> tmpList=new ArrayList<Integer>();
+		mdbConfig.preFailSinkSet.clear();
+		int len=sinkedList.size();
+		boolean isSuc=true;
+		
+		try{
+			for(int i=0;i<len;i++) {
+				CollectionMapper<Document> collectionMapper=sinkedList.get(i);
+				collectionMapper.setMdbConfig(mdbConfig);
+				if(!collectionMapper.send()) {
+					isSuc=false;
+					break;
+				}
+				tmpList.add(i);
 			}
-		}while(loop && times<mdbConfig.maxRetryTimes);
+		}catch(Exception e) {
+			isSuc=false;
+			log.error("call preSend occur error:",e);
+		}
 		
-		if(!loop) mdbConfig.preFailSinkSet.clear();
-		return !loop;
+		for(int index:tmpList) sinkedList.remove(index);
+		mdbConfig.preFailSinkSet.addAll(sinkedList);
+		
+		return isSuc;
 	}
 	
 	/**
@@ -191,11 +205,14 @@ public class MdbService {
 	 * @throws InterruptedException 
 	 */
 	private boolean singleSend(Document doc) throws InterruptedException {
+		MongoCollection<Document> collection=getCollection(doc);
 		boolean loop=false;
 		int times=0;
 		do{
 			try{
-				mdbConfig.mongoCollection.insertOne(doc);
+				log.info("start singleSend...");
+				collection.insertOne(doc);
+				log.info("end singleSend...");
 				loop=false;
 			}catch(Exception e) {
 				times++;
@@ -205,32 +222,129 @@ public class MdbService {
 			}
 		}while(loop && times<mdbConfig.maxRetryTimes);
 		
-		if(loop) mdbConfig.preFailSinkSet.add(doc);
+		if(loop) mdbConfig.preFailSinkSet.add(new CollectionMapper<Document>(doc,collection));
 		return !loop;
 	}
 	
 	/**
-	 * 批量发送文档到MDB
+	 * 按集合表命名空间批量发送文档到MDB
 	 * @return 是否发送成功
 	 * @throws InterruptedException 
 	 */
-	private boolean batchSend(List<Document> batchDocList) throws InterruptedException {
-		boolean loop=false;
-		int times=0;
-		do{
-			try{
-				mdbConfig.mongoCollection.insertMany(batchDocList);
-				loop=false;
-			}catch(Exception e) {
-				times++;
-				loop=true;
-				Thread.sleep(mdbConfig.failMaxWaitMills);
-				log.error("send occur excepton: ",e);
-			}
-		}while(loop && times<mdbConfig.maxRetryTimes);
+	private boolean batchSend(ArrayList<Document> batchDocList) throws InterruptedException {
+		HashMap<CollectionWrapper<Document>,ArrayList<Document>> collMap=getBatchCollectionMap(batchDocList);
+		if(null==collMap || 0==collMap.size()) return false;
 		
-		if(loop) mdbConfig.preFailSinkSet.addAll(batchDocList);
-		batchDocList.clear();
-		return !loop;
+		Set<Entry<CollectionWrapper<Document>, ArrayList<Document>>> entrys=collMap.entrySet();
+		for(Entry<CollectionWrapper<Document>, ArrayList<Document>> entry:entrys) {
+			MongoCollection<Document> collection=entry.getKey().collection;
+			ArrayList<Document> docList=entry.getValue();
+			boolean loop=false;
+			int times=0;
+			do{
+				try{
+					collection.insertMany(docList);
+					loop=false;
+				}catch(Exception e) {
+					times++;
+					loop=true;
+					Thread.sleep(mdbConfig.failMaxWaitMills);
+					log.error("send occur excepton: ",e);
+				}
+			}while(loop && times<mdbConfig.maxRetryTimes);
+			
+			if(!loop) continue;
+			
+			mdbConfig.preFailSinkSet.add(new CollectionMapper<Document>(docList,collection));
+			return !loop;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * 获取写出集合表字典
+	 * @param docList 写出文档列表
+	 * @return 集合表字典
+	 */
+	private HashMap<CollectionWrapper<Document>,ArrayList<Document>> getBatchCollectionMap(ArrayList<Document> docList) {
+		if(null==docList) return null;
+		
+		HashMap<CollectionWrapper<Document>,ArrayList<Document>> collMap=
+				new HashMap<CollectionWrapper<Document>,ArrayList<Document>>();
+		
+		for(Document doc:docList) {
+			CollectionWrapper<Document> collectionWrapper=getCollectionWrapper(doc);
+			ArrayList<Document> tmpList=collMap.get(collectionWrapper);
+			if(null==tmpList) collMap.put(collectionWrapper, tmpList=new ArrayList<Document>());
+			tmpList.add(doc);
+		}
+		
+		return collMap;
+	}
+	
+	/**
+	 * 获取写出集合表
+	 * @param doc 写出文档
+	 * @return 集合表
+	 */
+	private MongoCollection<Document> getCollection(Document doc) {
+		MongoDatabase database=mdbConfig.defaultDatabase;
+		if(null!=mdbConfig.dbField) {
+			String dbNameStr=(String)doc.remove(mdbConfig.dbField);
+			if(!isEmpty(dbNameStr)) {
+				database=mdbConfig.mongoClient.getDatabase(dbNameStr.trim());
+			}
+		}
+		
+		MongoCollection<Document> collection=mdbConfig.defaultCollection;
+		if(null!=mdbConfig.tabField) {
+			String tabNameStr=(String)doc.remove(mdbConfig.tabField);
+			if(!isEmpty(tabNameStr)) {
+				collection=database.getCollection(tabNameStr.trim(),Document.class);
+			}
+		}
+		
+		return collection;
+	}
+	
+	/**
+	 * 获取写出集合表包装器
+	 * @param doc 写出文档
+	 * @return 集合表包装器
+	 */
+	private CollectionWrapper<Document> getCollectionWrapper(Document doc) {
+		String dbName=mdbConfig.defaultDB;
+		MongoDatabase database=mdbConfig.defaultDatabase;
+		if(null!=mdbConfig.dbField) {
+			String dbNameStr=(String)doc.remove(mdbConfig.dbField);
+			if(!isEmpty(dbNameStr)) {
+				dbName=dbNameStr.trim();
+				database=mdbConfig.mongoClient.getDatabase(dbName);
+			}
+		}
+		
+		String tabName=mdbConfig.defaultTab;
+		MongoCollection<Document> collection=mdbConfig.defaultCollection;
+		if(null!=mdbConfig.tabField) {
+			String tabNameStr=(String)doc.remove(mdbConfig.tabField);
+			if(!isEmpty(tabNameStr)) {
+				tabName=tabNameStr.trim();
+				collection=database.getCollection(tabName,Document.class);
+			}
+		}
+		
+		return new CollectionWrapper<Document>(dbName,tabName,collection);
+	}
+	
+	/**
+	 * 获取参数值
+	 * @param key 参数名
+	 * @param defaultValue 默认参数值
+	 * @return 参数值
+	 */
+	private static final boolean isEmpty(String value) {
+		if(null==value) return true;
+		return 0==value.trim().length();
 	}
 }

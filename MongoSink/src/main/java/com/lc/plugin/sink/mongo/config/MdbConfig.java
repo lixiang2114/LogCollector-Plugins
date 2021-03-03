@@ -37,6 +37,16 @@ public class MdbConfig {
 	public  String docId;
 	
 	/**
+	 * 处理记录中的库名
+	 */
+	public String dbField;
+	
+	/**
+	 * 处理记录中的表名
+	 */
+	public String tabField;
+	
+	/**
 	 * 发送器运行时路径
 	 */
 	public File sinkPath;
@@ -55,6 +65,16 @@ public class MdbConfig {
 	 * 登录MongoDB密码
 	 */
 	public String passWord;
+	
+	/**
+	 * 默认数据库名
+	 */
+	public String defaultDB;
+	
+	/**
+	 * 默认数据表名
+	 */
+	public String defaultTab;
 	
 	/**
 	 * 记录字段列表
@@ -103,14 +123,19 @@ public class MdbConfig {
 	public Set<Object> preFailSinkSet;
 	
 	/**
+	 * 默认数据库(未配置默认为test)
+	 */
+	public MongoDatabase defaultDatabase;
+	
+	/**
 	 * MongoDB客户端连接参数
 	 */
 	public MongoClientOptions mongoClientOptions;
 	
 	/**
-	 * MongoDB集合对象
+	 * 默认集合表(未配置默认为test)
 	 */
-	public MongoCollection<Document> mongoCollection;
+	public MongoCollection<Document> defaultCollection;
 	
 	/**
 	 * 英文冒号正则式
@@ -149,11 +174,17 @@ public class MdbConfig {
 	 * @param config
 	 */
 	public MdbConfig config() {
-		String dataBaseStr=config.getProperty("dataBaseName");
-		if(isEmpty(dataBaseStr)) throw new RuntimeException("No Database Name Specified...");
+		String defaultDBStr=config.getProperty("defaultDB");
+		defaultDB=isEmpty(defaultDBStr)?null:defaultDBStr.trim();
 		
-		String collectionStr=config.getProperty("collectionName");
-		if(isEmpty(collectionStr)) throw new RuntimeException("No Collection Name Specified...");
+		String defaultTabStr=config.getProperty("defaultTab");
+		defaultTab=isEmpty(defaultTabStr)?null:defaultTabStr.trim();
+		
+		String dbFieldStr=config.getProperty("dbField");
+		dbField=isEmpty(dbFieldStr)?null:dbFieldStr.trim();
+		
+		String tabFieldStr=config.getProperty("tabField");
+		tabField=isEmpty(tabFieldStr)?null:tabFieldStr.trim();
 		
 		initHostAddress();
 		initMongoClientOptions();
@@ -203,11 +234,12 @@ public class MdbConfig {
 		if(null==userName || null==passWord) {
 			mongoClient=new MongoClient(hostList,mongoClientOptions);
 		}else{
-			mongoClient=new MongoClient(hostList,MongoCredential.createCredential(userName, dataBaseStr, passWord.toCharArray()),mongoClientOptions);
+			String loginDB=null==defaultDB?"admin":defaultDB;
+			mongoClient=new MongoClient(hostList,MongoCredential.createCredential(userName, loginDB, passWord.toCharArray()),mongoClientOptions);
 		}
 		
-		MongoDatabase database=mongoClient.getDatabase(dataBaseStr);
-		mongoCollection=database.getCollection(collectionStr,Document.class);
+		defaultDatabase=mongoClient.getDatabase(null==defaultDB?"test":defaultDB);
+		defaultCollection=defaultDatabase.getCollection(null==defaultTab?"test":defaultTab,Document.class);
 		
 		return this;
 	}
@@ -305,8 +337,7 @@ public class MdbConfig {
 	 */
 	private static final boolean isEmpty(String value) {
 		if(null==value) return true;
-		String valueStr=value.trim();
-		return 0==valueStr.length();
+		return 0==value.trim().length();
 	}
 	
 	/**
@@ -382,15 +413,21 @@ public class MdbConfig {
 		HashMap<String,Object> map=new HashMap<String,Object>();
 		map.put("parse", parse);
 		map.put("docId", docId);
+		map.put("dbField", dbField);
 		map.put("fieldList", fieldList);
 		map.put("hostList", hostList);
+		map.put("tabField", tabField);
 		map.put("sinkPath", sinkPath);
 		map.put("batchSize", batchSize);
+		map.put("defaultDB", defaultDB);
 		map.put("passWord", passWord);
 		map.put("userName", userName);
+		map.put("defaultTab", defaultTab);
 		map.put("fieldSeparator", fieldSeparator);
 		map.put("maxRetryTimes", maxRetryTimes);
 		map.put("failMaxWaitMills", failMaxWaitMills);
+		map.put("defaultDatabase", defaultDatabase);
+		map.put("defaultCollection", defaultCollection);
 		map.put("batchMaxWaitMills", batchMaxWaitMills);
 		map.put("preFailSinkSetSize", preFailSinkSet.size());
 		map.put("maxWaitTime", mongoClientOptions.getMaxWaitTime());

@@ -1,5 +1,6 @@
 package com.lc.plugin.sink.mongo.service;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -109,6 +110,18 @@ public class MdbService {
 			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
 		}
 		
+		for(String numField:mdbConfig.numFieldSet) {
+			Object value=docMap.get(numField);
+			if(null==value) continue;
+			docMap.put(numField, Double.parseDouble(value.toString().trim()));
+		}
+		
+		for(String timeField:mdbConfig.timeFieldSet) {
+			Object value=docMap.get(timeField);
+			if(null==value) continue;
+			docMap.put(timeField, getGMTimestamp(value));
+		}
+		
 		return singleSend(new Document(docMap));
 	}
 	
@@ -145,6 +158,18 @@ public class MdbService {
 			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
 		}
 		
+		for(String numField:mdbConfig.numFieldSet) {
+			Object value=docMap.get(numField);
+			if(null==value) continue;
+			docMap.put(numField, Double.parseDouble(value.toString().trim()));
+		}
+		
+		for(String timeField:mdbConfig.timeFieldSet) {
+			Object value=docMap.get(timeField);
+			if(null==value) continue;
+			docMap.put(timeField, getGMTimestamp(value));
+		}
+		
 		batchList.add(new Document(docMap));
 		if(batchList.size()<mdbConfig.batchSize) return null;
 		
@@ -166,6 +191,12 @@ public class MdbService {
 		if(null!=mdbConfig.docId  && 0!=mdbConfig.docId.length()){
 			String docIdVal=null;
 			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+		}
+		
+		for(String timeField:mdbConfig.timeFieldSet){
+			Object value=docMap.get(timeField);
+			if(null==value) continue;
+			docMap.put(timeField, getGMTimestamp(value));
 		}
 		
 		return singleSend(new Document(docMap));
@@ -190,6 +221,12 @@ public class MdbService {
 		if(null!=mdbConfig.docId  && 0!=mdbConfig.docId.length()){
 			String docIdVal=null;
 			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+		}
+		
+		for(String timeField:mdbConfig.timeFieldSet){
+			Object value=docMap.get(timeField);
+			if(null==value) continue;
+			docMap.put(timeField, getGMTimestamp(value));
 		}
 		
 		batchList.add(new Document(docMap));
@@ -234,6 +271,7 @@ public class MdbService {
 	private boolean batchSend(ArrayList<Document> batchDocList) throws InterruptedException {
 		HashMap<CollectionWrapper<Document>,ArrayList<Document>> collMap=getBatchCollectionMap(batchDocList);
 		if(null==collMap || 0==collMap.size()) return false;
+		boolean finalSuccess=true;
 		
 		Set<Entry<CollectionWrapper<Document>, ArrayList<Document>>> entrys=collMap.entrySet();
 		for(Entry<CollectionWrapper<Document>, ArrayList<Document>> entry:entrys) {
@@ -252,14 +290,14 @@ public class MdbService {
 					log.error("send occur excepton: ",e);
 				}
 			}while(loop && times<mdbConfig.maxRetryTimes);
-			
-			if(!loop) continue;
-			
-			mdbConfig.preFailSinkSet.add(new CollectionMapper<Document>(docList,collection));
-			return !loop;
+			if(loop) {
+				finalSuccess=false;
+				mdbConfig.preFailSinkSet.add(new CollectionMapper<Document>(docList,collection));
+			}
 		}
 		
-		return true;
+		batchDocList.clear();
+		return finalSuccess;
 	}
 	
 	/**
@@ -346,5 +384,22 @@ public class MdbService {
 	private static final boolean isEmpty(String value) {
 		if(null==value) return true;
 		return 0==value.trim().length();
+	}
+	
+	/**
+	 * 转换为GMT+8时间戳
+	 * @param value 待转换的时间对象
+	 * @return GMT+8时间戳
+	 */
+	private Timestamp getGMTimestamp(Object value) {
+		if(value instanceof java.util.Date) return new Timestamp(((java.util.Date)value).getTime()+mdbConfig.timeZoneMillis);
+		if(value instanceof Number) return new Timestamp(((Number)value).longValue()+mdbConfig.timeZoneMillis);
+		if(value instanceof String) {
+			Timestamp ts=Timestamp.valueOf(value.toString().trim());
+			ts.setTime(ts.getTime()+mdbConfig.timeZoneMillis);
+			return ts;
+		}else{
+			return null;
+		}
 	}
 }

@@ -4,11 +4,14 @@ import java.io.File;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.bson.Document;
 
@@ -93,6 +96,11 @@ public class MdbConfig {
 	public Properties config;
 	
 	/**
+	 * GMT时差毫秒数
+	 */
+	public long timeZoneMillis;
+	
+	/**
 	 * 记录字段默认分隔符为中英文空白正则式
 	 */
 	public Pattern fieldSeparator;
@@ -116,6 +124,18 @@ public class MdbConfig {
 	 * MongoDB客户端
 	 */
 	public MongoClient mongoClient;
+	
+	/**
+	 * 写入MDB数据库的时间字段集
+	 * 通常为java.util.Date的子类型
+	 */
+	public Set<String> timeFieldSet;
+	
+	/**
+	 * 写入MDB数据库的数字字段集
+	 * 通常为java.lang.Number的子类型
+	 */
+	public Set<String> numFieldSet;
 	
 	/**
 	 * 上次发送失败任务表
@@ -146,6 +166,11 @@ public class MdbConfig {
 	 * 英文逗号正则式
 	 */
 	private static final Pattern COMMA_REGEX=Pattern.compile(",");
+	
+	/**
+	 * 时区正则式
+	 */
+	private static final Pattern TIMEZONE_REGEX=Pattern.compile("\\+|-");
 	
 	/**
      * 数字正则式
@@ -185,6 +210,33 @@ public class MdbConfig {
 		
 		String tabFieldStr=config.getProperty("tabField");
 		tabField=isEmpty(tabFieldStr)?null:tabFieldStr.trim();
+		
+		String timeZoneStr=config.getProperty("timeZone");
+		if(isEmpty(timeZoneStr)) {
+			timeZoneMillis=8*3600*1000;
+		}else{
+			timeZoneStr=timeZoneStr.trim();
+			String[] timeZoneArr=TIMEZONE_REGEX.split(timeZoneStr);
+			if(2>timeZoneArr.length) throw new RuntimeException("parameter value error: "+timeZoneStr+", example: GMT+8");
+			timeZoneMillis=Integer.parseInt(timeZoneArr[1])*3600*1000;
+			if(-1==timeZoneStr.indexOf("+")) timeZoneMillis=-timeZoneMillis;
+		}
+		
+		String numFieldStr=config.getProperty("numFields");
+		if(isEmpty(numFieldStr)) {
+			numFieldSet=new HashSet<String>();
+		}else{
+			String[] numFieldArr=COMMA_REGEX.split(numFieldStr.trim());
+			numFieldSet=Arrays.stream(numFieldArr).map(e->e.trim()).collect(Collectors.toSet());
+		}
+		
+		String timeFieldStr=config.getProperty("timeFields");
+		if(isEmpty(timeFieldStr)) {
+			timeFieldSet=new HashSet<String>();
+		}else{
+			String[] timeFieldArr=COMMA_REGEX.split(timeFieldStr.trim());
+			timeFieldSet=Arrays.stream(timeFieldArr).map(e->e.trim()).collect(Collectors.toSet());
+		}
 		
 		initHostAddress();
 		initMongoClientOptions();

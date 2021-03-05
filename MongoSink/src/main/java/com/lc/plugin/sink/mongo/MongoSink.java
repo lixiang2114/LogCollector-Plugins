@@ -59,11 +59,13 @@ public class MongoSink extends SinkPluginAdapter{
 		try{
 			if(mdbConfig.parse){
 				if(null==mdbConfig.batchSize) {
+					log.info("call parseAndSingleSend...");
 					while(flow.sinkStart) {
 						Boolean flag=mdbService.parseAndSingleSend(filterToSinkChannel.get());
 						if(null!=flag && !flag) return false;
 					}
 				}else{
+					log.info("call parseAndBatchSend...");
 					while(flow.sinkStart) {
 						Boolean flag=mdbService.parseAndBatchSend(filterToSinkChannel.get(mdbConfig.batchMaxWaitMills));
 						if(null!=flag && !flag) return false;
@@ -71,11 +73,13 @@ public class MongoSink extends SinkPluginAdapter{
 				}
 			}else{
 				if(null==mdbConfig.batchSize) {
+					log.info("call noParseAndSingleSend...");
 					while(flow.sinkStart) {
 						Boolean flag=mdbService.noParseAndSingleSend(filterToSinkChannel.get());
 						if(null!=flag && !flag) return false;
 					}
 				}else{
+					log.info("call noParseAndBatchSend...");
 					while(flow.sinkStart) {
 						Boolean flag=mdbService.noParseAndBatchSend(filterToSinkChannel.get(mdbConfig.batchMaxWaitMills));
 						if(null!=flag && !flag) return false;

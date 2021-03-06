@@ -64,6 +64,7 @@ public class HttpTransfer extends TransferPluginAdapter {
 	
 	@Override
 	public Object stop(Object params) throws Exception {
+		log.info("stop transfer save process...");
 		flow.transferStart=false;
 		httpServer.shutdownServer();
 		return true;

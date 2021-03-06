@@ -131,6 +131,8 @@ public class TransferService extends HttpAction{
 					return;
 			}
 			
+			if(null==line) return;
+			
 			//写入转存日志文件
 			fileWriter.write(line);
 			fileWriter.newLine();

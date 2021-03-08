@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.Collections;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,7 @@ import com.lc.plugin.transfer.http.config.RecvType;
  * @author Lixiang
  * @description 转存服务模块
  */
-public class TransferService extends HttpAction{
+public class TransferService extends HttpAction {
 	/**
 	 * Http转存配置
 	 */
@@ -35,19 +34,19 @@ public class TransferService extends HttpAction{
 	private BufferedWriter fileWriter;
 	
 	/**
+	 * 认证服务组件
+	 */
+	private AuthorService authorService;
+	
+	/**
 	 * 日志工具
 	 */
 	private static final Logger log=LoggerFactory.getLogger(TransferService.class);
 	
-	public TransferService() {}
-	
-	public TransferService(Object servletConfig) throws IOException{
-		
-	}
-	
 	@Override
 	public void init() throws IOException {
 		this.httpConfig=(HttpConfig)serverConfig.servletConfig;
+		this.authorService = new AuthorService(httpConfig);
 		this.fileWriter=new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(httpConfig.transferSaveFile.toPath(), StandardOpenOption.APPEND)));
 	}
 
@@ -77,28 +76,27 @@ public class TransferService extends HttpAction{
 		
 		log.info("current client is not logged, verify the login...");
 		
+		Boolean flag=null;
+		switch(httpConfig.authorMode){
+			case "auto":
+				flag=authorService.queryAuthor(request, response);
+				if(null!=flag && flag) break;
+			case "base":
+				flag=authorService.baseAuthor(request, response);
+				break;
+			default:
+				flag=authorService.queryAuthor(request, response);
+		}
+		
 		String validateResult=httpConfig.loginFailureId;
-		if(null==httpConfig.userField || null==httpConfig.passField || null==httpConfig.userName || null==httpConfig.passWord){
-			log.info("login field is Null,Client Login Failure!");
-		}else{
-			String userField=httpConfig.userField.trim();
-			String passField=httpConfig.passField.trim();
-			String userNameField=httpConfig.userName.trim();
-			String passWordField=httpConfig.passWord.trim();
-			
-			if(userField.isEmpty() || passField.isEmpty() || userNameField.isEmpty() || passWordField.isEmpty()){
-				log.info("login field is Empty,Client Login Failure!");
-			}else{
-				String userName=request.getParameter(httpConfig.userField);
-				String passWord=request.getParameter(httpConfig.passField);
-				if(!httpConfig.userName.equals(userName) || !httpConfig.passWord.equals(passWord)) {
-					log.info("userName or passWord is Error,Client Login Failure!");
-				}else{
-					log.info("Client Login Success!");
-					validateResult=httpConfig.loginSuccessId;
-					request.getSession().setAttribute("loginUser", Collections.singletonMap(userName, passWord));
-				}
-			}
+		if(null==flag) {
+			log.info("parameter config is error,Client Login Failure!");
+		}else if(!flag) {
+			log.info("userName or passWord is Error,Client Login Failure!");
+		}else {
+			log.info("Client Login Success!");
+			validateResult=httpConfig.loginSuccessId;
+			request.getSession().setAttribute("loginUser", request.getAttribute("loginUser"));
 		}
 		
 		writeACK(response,validateResult);

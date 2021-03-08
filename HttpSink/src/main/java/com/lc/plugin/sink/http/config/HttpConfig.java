@@ -8,6 +8,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.lixiang2114.flow.comps.Flow;
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.github.lixiang2114.flow.util.PropertiesReader;
@@ -54,6 +57,13 @@ public class HttpConfig {
 	public String passWord;
 	
 	/**
+	 * 认证模式
+	 * query:查询字串模式(默认)
+	 * base:基础认证模式
+	 */
+	public String authorMode;
+	
+	/**
 	 * Http客户端配置
 	 */
 	private Properties config;
@@ -92,6 +102,11 @@ public class HttpConfig {
 	 * 英文逗号正则式
 	 */
 	private static final Pattern COMMA_REGEX=Pattern.compile(",");
+	
+	/**
+	 * 日志工具
+	 */
+	private static final Logger log=LoggerFactory.getLogger(HttpConfig.class);
 	
 	public HttpConfig(){}
 	
@@ -152,6 +167,14 @@ public class HttpConfig {
 			if(0!=passFieldStrs.length()) passField=passFieldStrs;
 		}
 		
+		String authorModeStr=config.getProperty("authorMode");
+		if(null==authorModeStr) {
+			authorMode="query";
+		}else{
+			String authorModes=authorModeStr.trim();
+			authorMode=0==authorModes.length()?"query":authorModes;
+		}
+		
 		String userNameStr=config.getProperty("userName");
 		if(null!=userNameStr) {
 			String userNames=userNameStr.trim();
@@ -164,13 +187,31 @@ public class HttpConfig {
 			if(0!=passWords.length()) passWord=passWords;
 		}
 		
+		requireLogin=Boolean.parseBoolean(config.getProperty("requireLogin","true").trim());
+		if(requireLogin) {
+			if(null==loginURL) {
+				log.error("loginURL must be exists when requireLogin is true...");
+				throw new RuntimeException("loginURL must be exists when requireLogin is true...");
+			}
+			
+			if(null==userName || null==passWord) {
+				log.error("userName and passWord must be exists when requireLogin is true...");
+				throw new RuntimeException("userName and passWord must be exists when requireLogin is true...");
+			}
+			
+			if("query".equalsIgnoreCase(authorMode)) {
+				if(null==userField || null==passField) {
+					log.error("userField and passField must be exists when authorMode is query...");
+					throw new RuntimeException("userField and passField must be exists when authorMode is query...");
+				}
+			}
+		}
+		
 		String messageFieldStr=config.getProperty("messageField");
 		if(null!=messageFieldStr) {
 			String messageFields=messageFieldStr.trim();
 			if(0!=messageFields.length()) messageField=messageFields;
 		}
-		
-		requireLogin=Boolean.parseBoolean(config.getProperty("requireLogin","true").trim());
 		
 		return this;
 	}
@@ -253,6 +294,7 @@ public class HttpConfig {
 		map.put("batchSize", batchSize);
 		map.put("passWord", passWord);
 		map.put("userName", userName);
+		map.put("authorMode", authorMode);
 		map.put("requireLogin", requireLogin);
 		map.put("messageField", messageField);
 		map.put("maxRetryTimes", maxRetryTimes);

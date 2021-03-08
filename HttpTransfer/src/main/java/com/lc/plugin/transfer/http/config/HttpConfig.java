@@ -59,6 +59,14 @@ public class HttpConfig {
 	public String passWord;
 	
 	/**
+	 * 认证模式
+	 * query:查询字串模式
+	 * base:基础认证模式
+	 * auto:先使用查询字串,再使用基础认证模式
+	 */
+	public String authorMode;
+	
+	/**
 	 * Http客户端配置
 	 */
 	private Properties config;
@@ -159,6 +167,14 @@ public class HttpConfig {
 			if(0!=passFieldStrs.length()) passField=passFieldStrs;
 		}
 		
+		String authorModeStr=config.getProperty("authorMode");
+		if(null==authorModeStr) {
+			authorMode="auto";
+		}else{
+			String authorModes=authorModeStr.trim();
+			authorMode=0==authorModes.length()?"auto":authorModes;
+		}
+		
 		String userNameStr=config.getProperty("userName");
 		if(null!=userNameStr) {
 			String userNames=userNameStr.trim();
@@ -169,6 +185,21 @@ public class HttpConfig {
 		if(null!=passWordStr) {
 			String passWords=passWordStr.trim();
 			if(0!=passWords.length()) passWord=passWords;
+		}
+		
+		requireLogin=Boolean.parseBoolean(config.getProperty("requireLogin","true").trim());
+		if(requireLogin) {
+			if(null==userName || null==userName) {
+				log.error("userName and passWord must be exists when requireLogin is true...");
+				throw new RuntimeException("userName and passWord must be exists when requireLogin is true...");
+			}
+			
+			if("auto".equalsIgnoreCase(authorMode) || "query".equalsIgnoreCase(authorMode)) {
+				if(null==userField || null==passField) {
+					log.error("userField and passField must be exists when authorMode is auto or query...");
+					throw new RuntimeException("userField and passField must be exists when authorMode is auto or query...");
+				}
+			}
 		}
 		
 		//默认实时缓冲日志文件
@@ -191,7 +222,6 @@ public class HttpConfig {
 		log.info("transfer save logger file max size is: "+transferSaveMaxSize);
 		
 		//常规参数
-		requireLogin=Boolean.parseBoolean(config.getProperty("requireLogin","true").trim());
 		recvType=RecvType.valueOf(config.getProperty("recvType","MessageBody").trim());
 		loginSuccessId=config.getProperty("loginSuccessId","OK").trim();
 		loginFailureId=config.getProperty("loginFailureId","NO").trim();
@@ -292,6 +322,7 @@ public class HttpConfig {
 		map.put("passWord", passWord);
 		map.put("userName", userName);
 		map.put("transferPath", transferPath);
+		map.put("authorMode", authorMode);
 		map.put("requireLogin", requireLogin);
 		map.put("loginFailureId", loginFailureId);
 		map.put("loginSuccessId", loginSuccessId);

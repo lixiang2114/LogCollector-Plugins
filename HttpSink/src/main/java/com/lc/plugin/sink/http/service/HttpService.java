@@ -15,13 +15,18 @@ import com.lc.plugin.sink.http.config.HttpConfig;
 
 /**
  * @author Lixiang
- * @description Http服务
+ * @description Http服务模块
  */
 public class HttpService {
 	/**
 	 * Http发送器配置
 	 */
 	private HttpConfig httpConfig;
+	
+	/**
+	 * Http认证服务组件
+	 */
+	private AuthorService authorService;
 	
 	/**
 	 * 日志工具
@@ -32,6 +37,7 @@ public class HttpService {
 	
 	public HttpService(HttpConfig httpConfig){
 		this.httpConfig=httpConfig;
+		this.authorService=new AuthorService(httpConfig);
 	}
 	
 	/**
@@ -41,37 +47,23 @@ public class HttpService {
 	public boolean login(){
 		if(!httpConfig.requireLogin) return true;
 		
-		if(null==httpConfig.loginURL || 0==httpConfig.loginURL.length()) {
-			log.error("HttpSink login URL can not be NULL or Empty!!!");
-			return false;
+		boolean flag=false;
+		HashMap<String,Object> respMap=new HashMap<String,Object>();
+		
+		switch(httpConfig.authorMode) {
+			case "query":
+				flag=authorService.queryAuthor(respMap);
+				break;
+			case "base":
+				flag=authorService.baseAuthor(respMap);
+				break;
+			default:
+				flag=false;
 		}
 		
-		if(null==httpConfig.userField || 0==httpConfig.userField.length()) {
-			log.error("HttpSink login userField can not be NULL or Empty!!!");
-			return false;
-		}
+		if(flag) return true;
 		
-		if(null==httpConfig.passField || 0==httpConfig.passField.length()) {
-			log.error("HttpSink login passField can not be NULL or Empty!!!");
-			return false;
-		}
-		
-		if(null==httpConfig.userName || null==httpConfig.passWord) {
-			log.error("HttpSink login userName or passWord can not be NULL!!!");
-			return false;
-		}
-		
-		HashMap<String,Object> httpBody=new HashMap<String,Object>();
-		httpBody.put(httpConfig.userField, httpConfig.userName);
-		httpBody.put(httpConfig.passField, httpConfig.passWord);
-		
-		WebResponse<String> webResponse=RestClient.post(httpConfig.loginURL, httpBody,new Object[0]);
-		Integer statusCode=webResponse.getStatusCode();
-		String respMsg=webResponse.getBody();
-		HttpStatus okStatus=HttpStatus.OK;
-		
-		if(okStatus.value()==statusCode && okStatus.getReasonPhrase().equalsIgnoreCase(respMsg)) return true;
-		log.error("HttpSink login failure,response status code:{},response body:{}...",webResponse.getStatusCode(),webResponse.getBody());
+		log.error("HttpSink login failure,response status code: {},response message: {}...",respMap.remove("statusCode"),respMap.remove("respMsg"));
 		return false;
 	}
 	

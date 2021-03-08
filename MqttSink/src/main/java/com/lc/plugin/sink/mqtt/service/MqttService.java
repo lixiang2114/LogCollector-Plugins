@@ -1,6 +1,7 @@
 package com.lc.plugin.sink.mqtt.service;
 
 import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -9,12 +10,14 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.lixiang2114.flow.util.CommonUtil;
 import com.lc.plugin.sink.mqtt.config.MqttConfig;
 
 /**
  * @author Lixiang
  * @description Mqtt服务
  */
+@SuppressWarnings("unchecked")
 public class MqttService {
 	/**
 	 * Mqtt客户端
@@ -51,7 +54,7 @@ public class MqttService {
 		int times=0;
 		do{
 			try{
-				mqttClient.publish(mqttConfig.getTopic(), sinkedList.get(0));
+				mqttClient.publish(mqttConfig.getDefaultTopic(), sinkedList.get(0));
 				loop=false;
 			}catch(Exception e) {
 				times++;
@@ -74,8 +77,9 @@ public class MqttService {
 	public Boolean sendMsg(String msg) throws InterruptedException{
 		if(null==msg) return null;
 		if(0==(msg=msg.trim()).length()) return null;
+		String[] topicAndMsg=parseMsg(msg,mqttConfig);
 		
-		MqttMessage message = new MqttMessage(msg.getBytes(Charset.forName("UTF-8")));
+		MqttMessage message = new MqttMessage(topicAndMsg[1].getBytes(Charset.forName("UTF-8")));
 		message.setRetained(mqttConfig.getRetained());
 		message.setQos(mqttConfig.getQos());
 		
@@ -83,7 +87,7 @@ public class MqttService {
 		int times=0;
 		do{
 			try{
-				mqttClient.publish(mqttConfig.getTopic(), message);
+				mqttClient.publish(topicAndMsg[0], message);
 				loop=false;
 			}catch(Exception e) {
 				times++;
@@ -95,5 +99,59 @@ public class MqttService {
 		
 		if(loop) mqttConfig.preFailSinkSet.add(message);
 		return !loop;
+	}
+	
+	/**
+	 * 解析通道消息行
+	 * @param line 消息记录
+	 * @return 主题与消息
+	 */
+	private static final String[] parseMsg(String line,MqttConfig config) {
+		String[] retArr=new String[2];
+		if(config.getParse()) {
+			int sepIndex=line.indexOf(config.getFieldSeparator());
+			if(-1==sepIndex) {
+				retArr[0]=config.getDefaultTopic();
+				retArr[1]=line.trim();
+				return retArr;
+			}
+			
+			int topicIndex=config.getTopicIndex();
+			String firstPart=line.substring(0, sepIndex).trim();
+			String secondPart=line.substring(sepIndex+1).trim();
+			
+			if(0==topicIndex){
+				retArr[0]=firstPart;
+				retArr[1]=secondPart;
+			}else{
+				retArr[0]=secondPart;
+				retArr[1]=firstPart;
+			}
+			
+			return retArr;
+		}else{
+			HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(line, HashMap.class);
+			String topic=(String)recordMap.remove(config.getTopicField());
+			String record=(String)recordMap.values().iterator().next();
+			if(isEmpty(topic)) {
+				retArr[0]=config.getDefaultTopic();
+				retArr[1]=record.trim();
+				return retArr;
+			}
+			
+			retArr[0]=topic.trim();
+			retArr[1]=record.trim();
+			return retArr;
+		}
+	}
+	
+	/**
+	 * 字符串是否为空
+	 * @param value 字串值
+	 * @return 是否为空
+	 */
+	private static final boolean isEmpty(String value){
+		if(null==value) return true;
+		return 0==value.trim().length();
 	}
 }

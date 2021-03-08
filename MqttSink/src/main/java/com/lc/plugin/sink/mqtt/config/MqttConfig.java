@@ -44,6 +44,11 @@ public class MqttConfig {
 	private Integer qos;
 	
 	/**
+	 * 是否解析通道记录
+	 */
+	private boolean parse;
+	
+	/**
 	 * 登录Mqtt服务的Token
 	 */
 	private Token token;
@@ -51,7 +56,7 @@ public class MqttConfig {
 	/**
 	 * 连接主题名称
 	 */
-	private String topic;
+	private String defaultTopic;
 	
 	/**
 	 * Mqtt客户端配置
@@ -82,6 +87,23 @@ public class MqttConfig {
 	 * 登录验证Token的秘钥
 	 */
 	private String jwtSecret;
+	
+	/**
+	 * 主题字段索引
+	 * 默认值为0
+	 */
+	private int topicIndex=0;
+	
+	/**
+	 * 字段分隔符
+	 * 默认值为英文逗号
+	 */
+	private String fieldSeparator=",";
+	
+	/**
+	 * 主题字段名称
+	 */
+	private String topicField="topic";
 	
 	/**
 	 * 根证书文件
@@ -245,6 +267,10 @@ public class MqttConfig {
 		return null==qos?1:qos;
 	}
 	
+	public boolean getParse() {
+		return parse;
+	}
+	
 	public Token getToken() {
 		return token;
 	}
@@ -253,8 +279,24 @@ public class MqttConfig {
 		return jwtSecret;
 	}
 	
+	public String getTopicField(){
+		return topicField;
+	}
+	
+	public int getTopicIndex(){
+		return topicIndex;
+	}
+	
 	public String[] getHostList() {
 		return hostList;
+	}
+	
+	public String getFieldSeparator() {
+		return fieldSeparator;
+	}
+	
+	public String getDefaultTopic() {
+		return defaultTopic;
 	}
 	
 	public String getTokenValue() {
@@ -324,21 +366,18 @@ public class MqttConfig {
 		return -1==tokenExpire.intValue()?1000:null==expireFactor?750:expireFactor;
 	}
 	
-	public String getTopic() {
-		if(null==topic) throw new RuntimeException("ERROR: not configured for topic list...");
-		return topic;
-	}
-	
 	/**
 	 * @param config
 	 */
 	public void config() {
 		String qosStr=config.getProperty("qos");
-		String topicStr=config.getProperty("topic");
+		String parseStr=config.getProperty("parse");
 		String hostStr=config.getProperty("hostList");
 		String batchStr=config.getProperty("batchSize");
 		String retainedStr=config.getProperty("retained");
 		String jwtSecretStr=config.getProperty("jwtSecret");
+		String topicFieldStr=config.getProperty("topicField");
+		String topicIndexStr=config.getProperty("topicIndex");
 		String passWordStr=config.getProperty("passWord");
 		String rootCaFileStr=config.getProperty("rootCaFile");
 		String userNameStr=config.getProperty("userName");
@@ -347,10 +386,12 @@ public class MqttConfig {
 		String maxInflightStr=config.getProperty("maxInflight");
 		String clientCaFileStr=config.getProperty("clientCaFile");
 		String tokenExpireStr=config.getProperty("tokenExpire");
+		String defaultTopicStr=config.getProperty("defaultTopic");
 		String expireFactorStr=config.getProperty("expireFactor");
 		String clientKeyFileStr=config.getProperty("clientKeyFile");
 		String cleanSessionStr=config.getProperty("cleanSession");
 		String persistenceStr=config.getProperty("persistenceType");
+		String fieldSeparatorStr=config.getProperty("fieldSeparator");
 		String maxRetryTimesStr=config.getProperty("maxRetryTimes");
 		String failMaxWaitMillStr=config.getProperty("failMaxWaitMills");
 		String keepAliveIntervalStr=config.getProperty("keepAliveInterval");
@@ -360,17 +401,37 @@ public class MqttConfig {
 		
 		if(null!=qosStr) {
 			String qoss=qosStr.trim();
-			if(0!=qoss.length()) qos=new Integer(qoss);
+			if(0!=qoss.length()) qos=Integer.parseInt(qoss);
 		}
 		
-		if(null!=topicStr) {
-			String topicss=topicStr.trim();
-			if(0!=topicss.length()) topic=topicss;
+		if(null!=parseStr) {
+			String parsess=parseStr.trim();
+			if(0!=parsess.length()) parse=Boolean.parseBoolean(parsess);
+		}
+		
+		if(null!=defaultTopicStr) {
+			String topicss=defaultTopicStr.trim();
+			if(0!=topicss.length()) defaultTopic=topicss;
 		}
 		
 		if(null!=jwtSecretStr) {
 			String secret=jwtSecretStr.trim();
 			if(0!=secret.length()) jwtSecret=secret;
+		}
+		
+		if(null!=topicFieldStr) {
+			String topicFieldss=topicFieldStr.trim();
+			if(0!=topicFieldss.length()) topicField=topicFieldss;
+		}
+		
+		if(null!=topicIndexStr) {
+			String topicIndexss=topicIndexStr.trim();
+			if(0!=topicIndexss.length()) topicIndex=Integer.parseInt(topicIndexss);
+		}
+		
+		if(null!=fieldSeparatorStr) {
+			String fieldSeparatorss=fieldSeparatorStr.trim();
+			if(0!=fieldSeparatorss.length()) fieldSeparator=fieldSeparatorss;
 		}
 		
 		if(null!=passWordStr) {
@@ -681,18 +742,22 @@ public class MqttConfig {
 	public String collectRealtimeParams() {
 		HashMap<String,Object> map=new HashMap<String,Object>();
 		map.put("qos", qos);
-		map.put("topic", topic);
+		map.put("parse", parse);
 		map.put("retained", retained);
 		map.put("jwtSecret", jwtSecret);
 		map.put("batchSize", batchSize);
+		map.put("topicField", topicField);
+		map.put("topicIndex", topicIndex);
 		map.put("rootCaFile", rootCaFile);
 		map.put("tokenFrom", tokenFrom);
 		map.put("clientCaFile", clientCaFile);
 		map.put("token", token.getToken());
 		map.put("tokenExpire", tokenExpire);
+		map.put("defaultTopic", defaultTopic);
 		map.put("expireFactor", expireFactor);
 		map.put("clientKeyFile", clientKeyFile);
 		map.put("protocolType", protocolType);
+		map.put("fieldSeparator", fieldSeparator);
 		map.put("maxRetryTimes", maxRetryTimes);
 		map.put("tokenFromPass", tokenFromPass);
 		map.put("clientId", mqttClient.getClientId());

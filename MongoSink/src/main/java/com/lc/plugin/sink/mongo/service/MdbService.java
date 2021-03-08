@@ -55,8 +55,7 @@ public class MdbService {
 		if(0==mdbConfig.preFailSinkSet.size())  return true;
 		
 		List<CollectionMapper<Document>> sinkedList=mdbConfig.preFailSinkSet.stream().map(e->{return (CollectionMapper<Document>)e;}).collect(Collectors.toList());
-		ArrayList<Integer> tmpList=new ArrayList<Integer>();
-		mdbConfig.preFailSinkSet.clear();
+		ArrayList<Integer> indexList=new ArrayList<Integer>();
 		int len=sinkedList.size();
 		boolean isSuc=true;
 		
@@ -68,16 +67,14 @@ public class MdbService {
 					isSuc=false;
 					break;
 				}
-				tmpList.add(i);
+				indexList.add(i);
 			}
 		}catch(Exception e) {
 			isSuc=false;
 			log.error("call preSend occur error:",e);
 		}
 		
-		for(int index:tmpList) sinkedList.remove(index);
-		mdbConfig.preFailSinkSet.addAll(sinkedList);
-		
+		for(int index:indexList) sinkedList.remove(index);
 		return isSuc;
 	}
 	

@@ -2,12 +2,15 @@ package com.lc.plugin.sink.sql.service;
 
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -15,6 +18,8 @@ import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.lc.plugin.sink.sql.config.SqlConfig;
+import com.lc.plugin.sink.sql.dto.RecordMapper;
+import com.lc.plugin.sink.sql.dto.SQLMapper;
 
 /**
  * @author Lixiang
@@ -28,19 +33,14 @@ public class SqlService {
 	private SqlConfig sqlConfig;
 	
 	/**
-	 * SQL预编译语句
-	 */
-	private PreparedStatement pstat;
-	
-	/**
-	 * 批量记录表
-	 */
-	public ArrayList<Object[]> batchList=new ArrayList<Object[]>();
-	
-	/**
 	 * 日志工具
 	 */
 	private static final Logger log=LoggerFactory.getLogger(SqlService.class);
+	
+	/**
+	 * 批量记录字典
+	 */
+	private ConcurrentHashMap<SQLMapper, ArrayList<Object[]>> batchMap=new ConcurrentHashMap<SQLMapper, ArrayList<Object[]>>();
 	
 	public SqlService(){}
 	
@@ -55,37 +55,28 @@ public class SqlService {
 	 */
 	public boolean preSend() throws Exception {
 		if(0==sqlConfig.preFailSinkSet.size())return true;
-		Iterator<Map.Entry<String,Class<?>>> typeList=sqlConfig.fieldMap.entrySet().iterator();
-		if(null==pstat || pstat.isClosed()) pstat=sqlConfig.getConnection().prepareStatement(sqlConfig.insertSQL);
-		List<Object[]> sinkedList=sqlConfig.preFailSinkSet.stream().map(e->{return (Object[])e;}).collect(Collectors.toList());
+		List<RecordMapper> sinkedList=sqlConfig.preFailSinkSet.stream().map(e->{return (RecordMapper)e;}).collect(Collectors.toList());
+		ArrayList<Integer> indexList=new ArrayList<Integer>();
+		int len=sinkedList.size();
+		boolean isSuc=true;
 		
-		int fieldNum=sqlConfig.fieldMap.size();
-		for(Object[] record:sinkedList) {
-			if(fieldNum>record.length) continue;
-			for(int i=0;typeList.hasNext();pstat.setObject(i+1, CommonUtil.transferType(record[i], typeList.next().getValue())),i++);
-			pstat.addBatch();
-		}
-	
-		boolean loop=false;
-		int times=0;
-		do{
-			try{
-				int[] counts=pstat.executeBatch();
-				pstat.clearParameters();
-				pstat.clearBatch();
-				if(counts.length!=sinkedList.size()) throw new RuntimeException("executeBatch failure: counts.length!=sinkedList.size");
-				for(int count:counts) if(count<=0) throw new RuntimeException("executeBatch failure: count<=0");
-				loop=false;
-			}catch(Exception e) {
-				times++;
-				loop=true;
-				Thread.sleep(sqlConfig.failMaxWaitMills);
-				log.error("call preSend occur excepton: "+e.getMessage());
+		try{
+			for(int i=0;i<len;i++) {
+				RecordMapper recordMapper=sinkedList.get(i);
+				recordMapper.sqlConfig=sqlConfig;
+				if(!recordMapper.send()) {
+					isSuc=false;
+					break;
+				}
+				indexList.add(i);
 			}
-		}while(loop && times<sqlConfig.maxRetryTimes);
+		}catch(Exception e) {
+			isSuc=false;
+			log.error("call preSend occur error:",e);
+		}
 		
-		if(!loop) sqlConfig.preFailSinkSet.clear();
-		return !loop;
+		for(int index:indexList) sinkedList.remove(index);
+		return isSuc;
 	}
 	
 	/**
@@ -98,13 +89,11 @@ public class SqlService {
 		if(null==msg) return null;
 		if(0==(msg=msg.trim()).length()) return null;
 		
-		String[] record=sqlConfig.fieldSeparator.split(msg);
-		if(record.length<sqlConfig.fieldMap.size()) {
-			log.error("call parseAndSingleSend occur error: record.length<sqlConfig.fieldMap.size");
-			throw new RuntimeException("call parseAndSingleSend occur error: record.length<sqlConfig.fieldMap.size");
-		}
+		List<Object> valueList=Arrays.stream(sqlConfig.fieldSeparator.split(msg)).collect(Collectors.toList());
+		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(valueList));
+		if(null==sqlMapper) return null;
 		
-		return singleSend(record);
+		return singleSend(valueList,sqlMapper);
 	}
 	
 	/**
@@ -115,22 +104,27 @@ public class SqlService {
 	 */
 	public Boolean parseAndBatchSend(String msg) throws Exception {
 		if(null==msg) {
-			if(0==batchList.size()) return null;
-			return batchSend(batchList);
+			if(0==getBatchSize()) return null;
+			return batchSend(batchMap);
 		}
 		
 		if(0==(msg=msg.trim()).length()) return null;
 		
-		String[] record=sqlConfig.fieldSeparator.split(msg);
-		if(record.length<sqlConfig.fieldMap.size()) {
+		List<Object> valueList=Arrays.stream(sqlConfig.fieldSeparator.split(msg)).collect(Collectors.toList());
+		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(valueList));
+		if(null==sqlMapper) return null;
+		
+		if(valueList.size()<sqlMapper.fieldMap.size()) {
 			log.error("call parseAndBatchSend occur error: record.length<sqlConfig.fieldMap.size");
 			throw new RuntimeException("call parseAndBatchSend occur error: record.length<sqlConfig.fieldMap.size");
 		}
 		
-		batchList.add(record);
-		if(batchList.size()<sqlConfig.batchSize) return null;
+		ArrayList<Object[]> batchList=batchMap.get(sqlMapper);
+		if(null==batchList) batchMap.put(sqlMapper, batchList=new ArrayList<Object[]>());
+		batchList.add(valueList.toArray());
 		
-		return batchSend(batchList);
+		if(sqlConfig.batchSize>getBatchSize()) return null;
+		return batchSend(batchMap);
 	}
 	
 	/**
@@ -142,19 +136,14 @@ public class SqlService {
 	public Boolean noParseAndSingleSend(String msg) throws Exception {
 		if(null==msg) return null;
 		if(0==(msg=msg.trim()).length()) return null;
-		LinkedHashMap<String, Class<?>> fieldMap=sqlConfig.fieldMap;
 		
 		HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
-		if(null==recordMap || fieldMap.size()>recordMap.size()) {
-			log.error("call noParseAndSingleSend occur error: json message parse failure or recordMap.length<sqlConfig.fieldMap.size");
-			throw new RuntimeException("call noParseAndSingleSend occur error:  json message parse failure or recordMap.length<sqlConfig.fieldMap.size");
-		}
+		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(recordMap));
+		if(null==sqlMapper) return null;
 		
-		Object[] record=new Object[fieldMap.size()];
-		Iterator<Entry<String, Class<?>>> its=fieldMap.entrySet().iterator();
-		for(int i=0;its.hasNext();record[i++]=recordMap.get(its.next().getKey()));
-		
-		return singleSend(record);
+		List<Object> valueList=new ArrayList<Object>();
+		for(Iterator<Entry<String, Class<?>>> its=sqlMapper.fieldMap.entrySet().iterator();its.hasNext();valueList.add(recordMap.get(its.next().getKey())));
+		return singleSend(valueList,sqlMapper);
 	}
 	
 	/**
@@ -165,62 +154,68 @@ public class SqlService {
 	 */
 	public Boolean noParseAndBatchSend(String msg) throws Exception {
 		if(null==msg) {
-			if(0==batchList.size()) return null;
-			return batchSend(batchList);
+			if(0==getBatchSize()) return null;
+			return batchSend(batchMap);
 		}
 		
 		if(0==(msg=msg.trim()).length()) return null;
 		
-		LinkedHashMap<String, Class<?>> fieldMap=sqlConfig.fieldMap;
 		HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
-		if(null==recordMap || fieldMap.size()>recordMap.size()) {
-			log.error("call noParseAndBatchSend occur error: json message parse failure or recordMap.length<sqlConfig.fieldMap.size");
-			throw new RuntimeException("call noParseAndBatchSend occur error:  json message parse failure or recordMap.length<sqlConfig.fieldMap.size");
+		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(recordMap));
+		if(null==sqlMapper) return null;
+		
+		if(recordMap.size()<sqlMapper.fieldMap.size()) {
+			log.error("call parseAndBatchSend occur error: record.length<sqlConfig.fieldMap.size");
+			throw new RuntimeException("call parseAndBatchSend occur error: record.length<sqlConfig.fieldMap.size");
 		}
 		
-		Object[] record=new Object[fieldMap.size()];
-		Iterator<Entry<String, Class<?>>> its=fieldMap.entrySet().iterator();
-		for(int i=0;its.hasNext();record[i++]=recordMap.get(its.next().getKey()));
+		ArrayList<Object[]> batchList=batchMap.get(sqlMapper);
+		if(null==batchList) batchMap.put(sqlMapper, batchList=new ArrayList<Object[]>());
 		
-		batchList.add(record);
-		if(batchList.size()<sqlConfig.batchSize) return null;
+		List<Object> valueList=new ArrayList<Object>();
+		for(Iterator<Entry<String, Class<?>>> its=sqlMapper.fieldMap.entrySet().iterator();its.hasNext();valueList.add(recordMap.get(its.next().getKey())));
+		batchList.add(valueList.toArray());
 		
-		return batchSend(batchList);
+		if(sqlConfig.batchSize>getBatchSize()) return null;
+		return batchSend(batchMap);
 	}
 	
 	/**
 	 * 发送单条记录到SQL数据库
 	 * @param record 记录对象
+	 * @param sqlMapper SQL映射器
 	 * @return 是否发送成功
 	 * @throws Exception 
 	 */
-	private boolean singleSend(Object[] record) throws Exception {
-		Iterator<Map.Entry<String,Class<?>>> typeList=sqlConfig.fieldMap.entrySet().iterator();
-		if(null==pstat || pstat.isClosed()) pstat=sqlConfig.getConnection().prepareStatement(sqlConfig.insertSQL);
+	private boolean singleSend(List<Object> valueList,SQLMapper sqlMapper) throws Exception {
+		LinkedHashMap<String,Class<?>> fieldMap=sqlMapper.fieldMap;
 		
-		try{
-			for(int i=0;typeList.hasNext();pstat.setObject(i+1, CommonUtil.transferType(record[i], typeList.next().getValue())),i++);
-			
-			boolean loop=false;
-			int times=0;
-			do{
-				try{
-					if(0>=pstat.executeUpdate()) throw new RuntimeException("call singleSend failure: count<=0");
-					pstat.clearParameters();
-					loop=false;
-				}catch(Exception e) {
-					times++;
-					loop=true;
-					Thread.sleep(sqlConfig.failMaxWaitMills);
-					log.error("call singleSend excepton: ",e);
-				}
-			}while(loop && times<sqlConfig.maxRetryTimes);
-			
-			if(loop) sqlConfig.preFailSinkSet.add(record);
-			return !loop;
-		}finally{
-			if(null!=pstat) pstat.close();
+		if(valueList.size()<fieldMap.size()) {
+			log.error("call singleSend occur error: record.length<sqlConfig.fieldMap.size");
+			throw new RuntimeException("call singleSend occur error: record.length<sqlConfig.fieldMap.size");
 		}
+		
+		PreparedStatement pstat=sqlMapper.getStatement();
+		Iterator<Map.Entry<String,Class<?>>> typeList=fieldMap.entrySet().iterator();
+		for(int i=0;typeList.hasNext();pstat.setObject(i+1, CommonUtil.transferType(valueList.get(i), typeList.next().getValue())),i++);
+		
+		boolean loop=false;
+		int times=0;
+		do{
+			try{
+				if(0>=pstat.executeUpdate()) throw new RuntimeException("call singleSend failure: count<=0");
+				loop=false;
+			}catch(Exception e) {
+				times++;
+				loop=true;
+				Thread.sleep(sqlConfig.failMaxWaitMills);
+				log.error("call singleSend excepton: ",e);
+			}
+		}while(loop && times<sqlConfig.maxRetryTimes);
+		
+		if(loop) sqlConfig.preFailSinkSet.add(new RecordMapper(valueList.toArray(),sqlMapper));
+		pstat.clearParameters();
+		return !loop;
 	}
 	
 	/**
@@ -229,35 +224,150 @@ public class SqlService {
 	 * @return 是否发送成功
 	 * @throws Exception 
 	 */
-	private boolean batchSend(List<Object[]> recordList) throws Exception {
-		Iterator<Map.Entry<String,Class<?>>> typeList=sqlConfig.fieldMap.entrySet().iterator();
-		if(null==pstat || pstat.isClosed()) pstat=sqlConfig.getConnection().prepareStatement(sqlConfig.insertSQL);
-		
-		for(Object[] record:recordList) {
-			for(int i=0;typeList.hasNext();pstat.setObject(i+1, CommonUtil.transferType(record[i], typeList.next().getValue())),i++);
-			pstat.addBatch();
-		}
-	
-		boolean loop=false;
-		int times=0;
-		do{
-			try{
-				int[] counts=pstat.executeBatch();
-				pstat.clearParameters();
-				pstat.clearBatch();
-				if(counts.length!=recordList.size()) throw new RuntimeException("executeBatch failure: counts.length!=recordList.size");
-				for(int count:counts) if(count<=0) throw new RuntimeException("executeBatch failure: count<=0");
-				loop=false;
-			}catch(Exception e) {
-				times++;
-				loop=true;
-				Thread.sleep(sqlConfig.failMaxWaitMills);
-				log.error("call batchSend excepton: ",e);
+	private boolean batchSend(Map<SQLMapper, ArrayList<Object[]>> batchMap) throws Exception {
+		boolean finalSuccess=true;
+		Set<Entry<SQLMapper, ArrayList<Object[]>>> entrys=batchMap.entrySet();
+		for(Entry<SQLMapper, ArrayList<Object[]>> entry:entrys) {
+			SQLMapper sqlMapper=entry.getKey();
+			ArrayList<Object[]> recordList=entry.getValue();
+			PreparedStatement pstat=sqlMapper.getStatement();
+			LinkedHashMap<String,Class<?>> fieldMap=sqlMapper.fieldMap;
+			
+			for(Object[] record:recordList) {
+				Iterator<Map.Entry<String,Class<?>>> typeList=fieldMap.entrySet().iterator();
+				for(int i=0;typeList.hasNext();pstat.setObject(i+1, CommonUtil.transferType(record[i], typeList.next().getValue())),i++);
+				pstat.addBatch();
 			}
-		}while(loop && times<sqlConfig.maxRetryTimes);
+			
+			boolean loop=false;
+			int times=0;
+			do{
+				try{
+					int[] counts=pstat.executeBatch();
+					if(counts.length!=recordList.size()) throw new RuntimeException("executeBatch failure: counts.length!=recordList.size");
+					for(int count:counts) if(count<=0) throw new RuntimeException("executeBatch failure: count<=0");
+					loop=false;
+				}catch(Exception e) {
+					times++;
+					loop=true;
+					Thread.sleep(sqlConfig.failMaxWaitMills);
+					log.error("call batchSend excepton: ",e);
+				}
+			}while(loop && times<sqlConfig.maxRetryTimes);
+			
+			if(loop) {
+				finalSuccess=false;
+				sqlConfig.preFailSinkSet.add(new RecordMapper(recordList,sqlMapper));
+			}
+			
+			pstat.clearParameters();
+			pstat.clearBatch();
+		}
 		
-		if(loop) sqlConfig.preFailSinkSet.addAll(recordList);
-		recordList.clear();
-		return !loop;
+		batchMap.clear();
+		return finalSuccess;
+	}
+	
+	/**
+	 * 获取写出集合表包装器
+	 * @param doc 写出文档
+	 * @return 集合表包装器
+	 */
+	private String getTableFullName(List<Object> record) {
+		if(null==record || 0==record.size()) return null;
+		
+		int dbIndex=-1;
+		int tabIndex=-1;
+		boolean removeDB=false;
+		boolean removeTab=false;
+		String dbName=sqlConfig.defaultDB;
+		String tabName=sqlConfig.defaultTab;
+		
+		if(null!=sqlConfig.dbIndex) {
+			dbIndex=sqlConfig.dbIndex.intValue();
+			String dbNameStr=(String)record.get(dbIndex);
+			if(!isEmpty(dbNameStr)) {
+				removeDB=true;
+				dbName=dbNameStr.trim();
+			}
+		}
+		
+		if(null!=sqlConfig.tabIndex) {
+			tabIndex=sqlConfig.tabIndex.intValue();
+			String tabNameStr=(String)record.get(tabIndex);
+			if(!isEmpty(tabNameStr)) {
+				removeTab=true;
+				tabName=tabNameStr.trim();
+			}
+		}
+		
+		if(dbIndex<tabIndex) {
+			if(removeTab) {
+				record.remove(tabIndex);
+				if(removeDB) record.remove(dbIndex);
+			}else{
+				if(removeDB) record.remove(dbIndex);
+			}
+		}else{
+			if(removeDB) {
+				record.remove(dbIndex);
+				if(removeTab) record.remove(tabIndex);
+			}else{
+				if(removeTab) record.remove(tabIndex);
+			}
+		}
+		
+		return new StringBuilder(dbName).append(".").append(tabName).toString();
+	}
+	
+	/**
+	 * 获取写出集合表包装器
+	 * @param doc 写出文档
+	 * @return 集合表包装器
+	 */
+	private String getTableFullName(Map<String,Object> recordMap) {
+		if(null==recordMap || 0==recordMap.size()) return null;
+		
+		String dbName=sqlConfig.defaultDB;
+		if(null!=sqlConfig.dbField) {
+			String dbNameStr=(String)recordMap.remove(sqlConfig.dbField);
+			if(!isEmpty(dbNameStr)) {
+				dbName=dbNameStr.trim();
+			}
+		}
+		
+		String tabName=sqlConfig.defaultTab;
+		if(null!=sqlConfig.tabField) {
+			String tabNameStr=(String)recordMap.remove(sqlConfig.tabField);
+			if(!isEmpty(tabNameStr)) {
+				tabName=tabNameStr.trim();
+			}
+		}
+		
+		return new StringBuilder(dbName).append(".").append(tabName).toString();
+	}
+	
+	/**
+	 * 获取参数值
+	 * @param key 参数名
+	 * @param defaultValue 默认参数值
+	 * @return 参数值
+	 */
+	private final int getBatchSize() {
+		int sum=0;
+		for(ArrayList<Object[]> list:batchMap.values()) sum+=list.size();
+		return sum;
+	}
+	
+	/**
+	 * 获取参数值
+	 * @param key 参数名
+	 * @param defaultValue 默认参数值
+	 * @return 参数值
+	 */
+	private static final boolean isEmpty(String value) {
+		if(null==value) return true;
+		String valueStr=value.trim();
+		return 0==valueStr.length();
 	}
 }

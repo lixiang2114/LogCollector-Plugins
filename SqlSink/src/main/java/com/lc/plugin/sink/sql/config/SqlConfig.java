@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import com.github.lixiang2114.flow.comps.Flow;
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.github.lixiang2114.flow.util.PropertiesReader;
+import com.lc.plugin.sink.sql.dto.SQLMapper;
 
 /**
  * @author Lixiang
@@ -28,11 +30,6 @@ import com.github.lixiang2114.flow.util.PropertiesReader;
  */
 @SuppressWarnings("unchecked")
 public class SqlConfig {
-	/**
-	 * SQL服务器数据表
-	 */
-	public String table;
-	
 	/**
 	 * 发送器运行时路径
 	 */
@@ -42,6 +39,26 @@ public class SqlConfig {
 	 * 是否解析通道数据记录
 	 */
 	public boolean parse;
+	
+	/**
+	 * 处理记录中的库名
+	 */
+	public String dbField;
+	
+	/**
+	 * 处理记录中的表名
+	 */
+	public String tabField;
+	
+	/**
+	 * 处理记录中库名索引
+	 */
+	public Integer dbIndex;
+	
+	/**
+	 * 处理记录中表名索引
+	 */
+	public Integer tabIndex;
 	
 	/**
 	 * SQL服务器用户
@@ -54,9 +71,14 @@ public class SqlConfig {
 	public String passWord;
 	
 	/**
-	 * 推送数据SQL语句
+	 * 默认数据库名
 	 */
-	public String insertSQL;
+	public String defaultDB;
+	
+	/**
+	 * 默认数据表名
+	 */
+	public String defaultTab;
 	
 	/**
 	 * 批处理尺寸
@@ -119,9 +141,9 @@ public class SqlConfig {
 	private static final Logger log=LoggerFactory.getLogger(SqlConfig.class);
 	
 	/**
-	 * 记录字段类型列表
+	 * SQL缓存字典
 	 */
-	public LinkedHashMap<String,Class<?>> fieldMap=new LinkedHashMap<String,Class<?>>();
+	private static final ConcurrentHashMap<String,SQLMapper> SQL_CACHE=new ConcurrentHashMap<String,SQLMapper>();
 	
 	public SqlConfig(){}
 	
@@ -151,13 +173,28 @@ public class SqlConfig {
 			this.connectionString=connectionString.trim();
 		}
 		
-		String tableStr=config.getProperty("table");
-		if(isEmpty(tableStr)) {
-			log.error("No Table Name Specified,Parameter Name: table");
-			throw new RuntimeException("No Table Name Specified,Parameter Name: table");
-		}else{
-			this.table=tableStr.trim();
+		String tabIndexStr=config.getProperty("tabIndex");
+		tabIndex=isEmpty(tabIndexStr)?null:Integer.parseInt(tabIndexStr.trim());
+		
+		String dbIndexStr=config.getProperty("dbIndex");
+		dbIndex=isEmpty(dbIndexStr)?null:Integer.parseInt(dbIndexStr.trim());
+		
+		if(null!=tabIndex && null!=dbIndex && tabIndex.intValue()==dbIndex.intValue()) {
+			log.error("dbIndex can not equal tabIndex: {}",tabIndex);
+			throw new RuntimeException("dbIndex can not equal tabIndex: "+tabIndex);
 		}
+		
+		String defaultTabStr=config.getProperty("defaultTab");
+		defaultTab=isEmpty(defaultTabStr)?null:defaultTabStr.trim();
+		
+		String defaultDBStr=config.getProperty("defaultDB");
+		defaultDB=isEmpty(defaultDBStr)?null:defaultDBStr.trim();
+		
+		String tabFieldStr=config.getProperty("tabField");
+		tabField=isEmpty(tabFieldStr)?null:tabFieldStr.trim();
+		
+		String dbFieldStr=config.getProperty("dbField");
+		dbField=isEmpty(dbFieldStr)?null:dbFieldStr.trim();
 		
 		String passWordStr=config.getProperty("passWord");
 		String userNameStr=config.getProperty("userName");
@@ -181,13 +218,6 @@ public class SqlConfig {
 			this.getConnection();
 		}catch(SQLException e){
 			log.error("create connection occur exeption:",e);
-			throw new RuntimeException(e);
-		}
-		
-		try {
-			this.initSQLConfig();
-		} catch (Exception e) {
-			log.error("initing sql client config occur exeption:",e);
 			throw new RuntimeException(e);
 		}
 		
@@ -219,20 +249,29 @@ public class SqlConfig {
 	}
 	
 	/**
-	 * 初始化SQL配置
+	 * 获取SQL映射器
+	 * @param tabFullName 数据库表全名
+	 * @return SQL映射器
+	 * @throws Exception
 	 */
-	private void initSQLConfig() throws Exception {
+	public SQLMapper getSqlMapper(String tabFullName) throws Exception {
+		if(isEmpty(tabFullName)) return null;
+		
+		SQLMapper sqlMapper=SQL_CACHE.get(tabFullName);
+		if(null!=sqlMapper) return sqlMapper;
+		
 		ResultSet res=null;
 		Statement stat=null;
-		StringBuilder sqlBuilder=new StringBuilder("insert into ").append(table).append(" (");
+		LinkedHashMap<String,Class<?>> fieldMap=new LinkedHashMap<String,Class<?>>();
+		StringBuilder sqlBuilder=new StringBuilder("insert into ").append(tabFullName).append(" (");
 		try {
-			stat=connection.createStatement();
-			res=stat.executeQuery("select * from "+table+" where 1=2");
+			stat=getConnection().createStatement();
+			res=stat.executeQuery("select * from "+tabFullName+" where 1=2");
 			ResultSetMetaData rsmd=res.getMetaData();
 			int len=rsmd.getColumnCount();
 			if(1>len) {
-				log.error("Not Found Any Field From table: {}",table);
-				throw new RuntimeException("Not Found Any Field From table: "+table);
+				log.error("Not Found Any Field From table: {}",tabFullName);
+				throw new RuntimeException("Not Found Any Field From table: "+tabFullName);
 			}
 			
 			String fieldName=null;
@@ -245,10 +284,12 @@ public class SqlConfig {
 			sqlBuilder.replace(sqlBuilder.length()-1, sqlBuilder.length(), ") values (");
 			for(int i=1;i<=len;sqlBuilder.append("?,"),i++);
 			sqlBuilder.replace(sqlBuilder.length()-1, sqlBuilder.length(), ")");
-			insertSQL=sqlBuilder.toString();
+			String insertSQL=sqlBuilder.toString();
 			
-			log.info("fieldMap: {}",fieldMap);
-			log.info("insertSQL: {}",insertSQL);
+			SQL_CACHE.put(tabFullName, sqlMapper=new SQLMapper(tabFullName,insertSQL,fieldMap,getConnection()));
+			log.info("add new fieldMap: {}",fieldMap);
+			log.info("add new insertSQL: {}",insertSQL);
+			return sqlMapper;
 		} finally {
 			if(null!=res) res.close();
 			if(null!=stat) stat.close();
@@ -349,15 +390,17 @@ public class SqlConfig {
 	 */
 	public String collectRealtimeParams() {
 		HashMap<String,Object> map=new HashMap<String,Object>();
-		map.put("table", table);
 		map.put("parse", parse);
+		map.put("table", defaultDB);
+		map.put("table", defaultTab);
+		map.put("dbIndex", dbIndex);
 		map.put("sinkPath", sinkPath);
-		map.put("fieldMap", fieldMap);
+		map.put("tabIndex", tabIndex);
 		map.put("batchSize", batchSize);
-		map.put("insertSQL", insertSQL);
 		map.put("passWord", passWord);
 		map.put("userName", userName);
 		map.put("jdbcDriver", jdbcDriver);
+		map.put("SQL_CACHE", SQL_CACHE);
 		map.put("fieldSeparator", fieldSeparator);
 		map.put("maxRetryTimes", maxRetryTimes);
 		map.put("failMaxWaitMills", failMaxWaitMills);

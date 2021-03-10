@@ -35,17 +35,17 @@ import com.mongodb.internal.connection.ServerAddressHelper;
 @SuppressWarnings("unchecked")
 public class MdbConfig {
 	/**
-	 * 文档ID字段名
+	 * 处理记录中的ID字段
 	 */
-	public  String docId;
+	public  String idField;
 	
 	/**
-	 * 处理记录中的库名
+	 * 处理记录中的库名字段
 	 */
 	public String dbField;
 	
 	/**
-	 * 处理记录中的表名
+	 * 处理记录中的表名字段
 	 */
 	public String tabField;
 	
@@ -252,10 +252,10 @@ public class MdbConfig {
 			if(0!=tmp.length()) batchSize=Integer.parseInt(tmp);
 		}
 		
-		String docIdStr=config.getProperty("docId");
-		if(null!=docIdStr) {
-			String tmp=docIdStr.trim();
-			if(0!=tmp.length()) docId=tmp;
+		String idFieldStr=config.getProperty("idField");
+		if(null!=idFieldStr) {
+			String tmp=idFieldStr.trim();
+			if(0!=tmp.length()) idField=tmp;
 		}
 		
 		String fieldListStr=config.getProperty("fieldList");
@@ -464,7 +464,7 @@ public class MdbConfig {
 	public String collectRealtimeParams() {
 		HashMap<String,Object> map=new HashMap<String,Object>();
 		map.put("parse", parse);
-		map.put("docId", docId);
+		map.put("idField", idField);
 		map.put("dbField", dbField);
 		map.put("fieldList", fieldList);
 		map.put("hostList", hostList);

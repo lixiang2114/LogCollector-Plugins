@@ -102,9 +102,9 @@ public class MdbService {
 		
 		if(0==docMap.size()) return null;
 		
-		if(null!=mdbConfig.docId  && 0!=mdbConfig.docId.length()){
+		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String numField:mdbConfig.numFieldSet) {
@@ -150,9 +150,9 @@ public class MdbService {
 		
 		if(0==docMap.size()) return null;
 		
-		if(null!=mdbConfig.docId  && 0!=mdbConfig.docId.length()){
+		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String numField:mdbConfig.numFieldSet) {
@@ -185,9 +185,9 @@ public class MdbService {
 		HashMap<String,Object> docMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
 		if(null==docMap || 0==docMap.size()) return null;
 		
-		if(null!=mdbConfig.docId  && 0!=mdbConfig.docId.length()){
+		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String timeField:mdbConfig.timeFieldSet){
@@ -215,9 +215,9 @@ public class MdbService {
 		HashMap<String,Object> docMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
 		if(null==docMap || 0==docMap.size()) return null;
 		
-		if(null!=mdbConfig.docId  && 0!=mdbConfig.docId.length()){
+		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.docId, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String timeField:mdbConfig.timeFieldSet){

@@ -2,8 +2,6 @@ package com.lc.plugin.sink.mqtt.service;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -12,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.lc.plugin.sink.mqtt.config.MqttConfig;
+import com.lc.plugin.sink.mqtt.dto.TopicMapper;
 
 /**
  * @author Lixiang
@@ -48,24 +47,13 @@ public class MqttService {
 	 */
 	public boolean preSend() throws InterruptedException {
 		if(0==mqttConfig.preFailSinkSet.size())  return true;
-		List<MqttMessage> sinkedList=mqttConfig.preFailSinkSet.stream().map(e->{return (MqttMessage)e;}).collect(Collectors.toList());
-		
-		boolean loop=false;
-		int times=0;
-		do{
-			try{
-				mqttClient.publish(mqttConfig.getDefaultTopic(), sinkedList.get(0));
-				loop=false;
-			}catch(Exception e) {
-				times++;
-				loop=true;
-				Thread.sleep(mqttConfig.failMaxWaitMills);
-				log.error("publish occur excepton: "+e.getMessage());
-			}
-		}while(loop && times<mqttConfig.maxRetryTimes);
-		
-		if(!loop) mqttConfig.preFailSinkSet.clear();
-		return !loop;
+		for(Object object:mqttConfig.preFailSinkSet) {
+			TopicMapper topicMapper=(TopicMapper)object;
+			topicMapper.setMqttConfig(mqttConfig);
+			if(!topicMapper.send()) return false;
+			mqttConfig.preFailSinkSet.remove(object);
+		}
+		return true;
 	}
 	
 	/**
@@ -97,7 +85,7 @@ public class MqttService {
 			}
 		}while(loop && times<mqttConfig.maxRetryTimes);
 		
-		if(loop) mqttConfig.preFailSinkSet.add(message);
+		if(loop) mqttConfig.preFailSinkSet.add(new TopicMapper(topicAndMsg[0],message));
 		return !loop;
 	}
 	

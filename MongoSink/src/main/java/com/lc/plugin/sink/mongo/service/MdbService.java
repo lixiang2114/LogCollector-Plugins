@@ -3,10 +3,8 @@ package com.lc.plugin.sink.mongo.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.bson.Document;
 import org.slf4j.Logger;
@@ -53,29 +51,13 @@ public class MdbService {
 	 */
 	public boolean preSend() throws InterruptedException {
 		if(0==mdbConfig.preFailSinkSet.size())  return true;
-		
-		List<CollectionMapper<Document>> sinkedList=mdbConfig.preFailSinkSet.stream().map(e->{return (CollectionMapper<Document>)e;}).collect(Collectors.toList());
-		ArrayList<Integer> indexList=new ArrayList<Integer>();
-		int len=sinkedList.size();
-		boolean isSuc=true;
-		
-		try{
-			for(int i=0;i<len;i++) {
-				CollectionMapper<Document> collectionMapper=sinkedList.get(i);
-				collectionMapper.setMdbConfig(mdbConfig);
-				if(!collectionMapper.send()) {
-					isSuc=false;
-					break;
-				}
-				indexList.add(i);
-			}
-		}catch(Exception e) {
-			isSuc=false;
-			log.error("call preSend occur error:",e);
+		for(Object object:mdbConfig.preFailSinkSet){
+			CollectionMapper<Document> collectionMapper=(CollectionMapper<Document>)object;
+			collectionMapper.setMdbConfig(mdbConfig);
+			if(!collectionMapper.send()) return false;
+			mdbConfig.preFailSinkSet.remove(object);
 		}
-		
-		for(int index:indexList) sinkedList.remove(index);
-		return isSuc;
+		return true;
 	}
 	
 	/**

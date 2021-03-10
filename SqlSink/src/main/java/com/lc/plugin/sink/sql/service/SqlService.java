@@ -55,28 +55,13 @@ public class SqlService {
 	 */
 	public boolean preSend() throws Exception {
 		if(0==sqlConfig.preFailSinkSet.size())return true;
-		List<RecordMapper> sinkedList=sqlConfig.preFailSinkSet.stream().map(e->{return (RecordMapper)e;}).collect(Collectors.toList());
-		ArrayList<Integer> indexList=new ArrayList<Integer>();
-		int len=sinkedList.size();
-		boolean isSuc=true;
-		
-		try{
-			for(int i=0;i<len;i++) {
-				RecordMapper recordMapper=sinkedList.get(i);
-				recordMapper.sqlConfig=sqlConfig;
-				if(!recordMapper.send()) {
-					isSuc=false;
-					break;
-				}
-				indexList.add(i);
-			}
-		}catch(Exception e) {
-			isSuc=false;
-			log.error("call preSend occur error:",e);
+		for(Object object:sqlConfig.preFailSinkSet){
+			RecordMapper recordMapper=(RecordMapper)object;
+			recordMapper.sqlConfig=sqlConfig;
+			if(!recordMapper.send()) return false;
+			sqlConfig.preFailSinkSet.remove(object);
 		}
-		
-		for(int index:indexList) sinkedList.remove(index);
-		return isSuc;
+		return true;
 	}
 	
 	/**

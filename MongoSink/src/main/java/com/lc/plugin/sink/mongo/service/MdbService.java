@@ -92,7 +92,7 @@ public class MdbService {
 		for(String numField:mdbConfig.numFieldSet) {
 			Object value=docMap.get(numField);
 			if(null==value) continue;
-			docMap.put(numField, Double.parseDouble(value.toString().trim()));
+			docMap.put(numField, getNumber(value));
 		}
 		
 		for(String timeField:mdbConfig.timeFieldSet) {
@@ -140,7 +140,7 @@ public class MdbService {
 		for(String numField:mdbConfig.numFieldSet) {
 			Object value=docMap.get(numField);
 			if(null==value) continue;
-			docMap.put(numField, Double.parseDouble(value.toString().trim()));
+			docMap.put(numField, getNumber(value));
 		}
 		
 		for(String timeField:mdbConfig.timeFieldSet) {
@@ -364,6 +364,18 @@ public class MdbService {
 	}
 	
 	/**
+	 * 转换为数字类型
+	 * @param value 待转换的数字对象
+	 * @return 数字值
+	 */
+	private Number getNumber(Object value) {
+		String str=value.toString().trim();
+		if(0==str.length()) return null;
+		if(CommonUtil.isInteger(str)) return Integer.parseInt(str);
+		return Double.parseDouble(str);
+	}
+	
+	/**
 	 * 转换为GMT+8时间戳
 	 * @param value 待转换的时间对象
 	 * @return GMT+8时间戳
@@ -372,7 +384,9 @@ public class MdbService {
 		if(value instanceof java.util.Date) return new Timestamp(((java.util.Date)value).getTime()+mdbConfig.timeZoneMillis);
 		if(value instanceof Number) return new Timestamp(((Number)value).longValue()+mdbConfig.timeZoneMillis);
 		if(value instanceof String) {
-			Timestamp ts=Timestamp.valueOf(value.toString().trim());
+			String str=value.toString().trim();
+			if(0==str.length()) return null;
+			Timestamp ts=Timestamp.valueOf(str);
 			ts.setTime(ts.getTime()+mdbConfig.timeZoneMillis);
 			return ts;
 		}else{

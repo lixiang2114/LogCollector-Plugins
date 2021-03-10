@@ -226,9 +226,7 @@ public class MdbService {
 		int times=0;
 		do{
 			try{
-				log.info("start singleSend...");
 				collection.insertOne(doc);
-				log.info("end singleSend...");
 				loop=false;
 			}catch(Exception e) {
 				times++;

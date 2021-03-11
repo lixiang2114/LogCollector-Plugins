@@ -215,11 +215,7 @@ public class MdbConfig {
 		if(isEmpty(timeZoneStr)) {
 			timeZoneMillis=8*3600*1000;
 		}else{
-			timeZoneStr=timeZoneStr.trim();
-			String[] timeZoneArr=TIMEZONE_REGEX.split(timeZoneStr);
-			if(2>timeZoneArr.length) throw new RuntimeException("parameter value error: "+timeZoneStr+", example: GMT+8");
-			timeZoneMillis=Integer.parseInt(timeZoneArr[1])*3600*1000;
-			if(-1==timeZoneStr.indexOf("+")) timeZoneMillis=-timeZoneMillis;
+			timeZoneMillis=Integer.parseInt(timeZoneStr.trim())*36000;
 		}
 		
 		String numFieldStr=config.getProperty("numFields");

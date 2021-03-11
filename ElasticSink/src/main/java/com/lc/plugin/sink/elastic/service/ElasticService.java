@@ -327,7 +327,7 @@ public class ElasticService {
 	private Number getNumber(Object value) {
 		String str=value.toString().trim();
 		if(0==str.length()) return null;
-		if(CommonUtil.isInteger(str)) return Integer.parseInt(str);
+		if(CommonUtil.isInteger(str)) return Long.parseLong(str);
 		return Double.parseDouble(str);
 	}
 	

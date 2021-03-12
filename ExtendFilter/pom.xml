@@ -34,18 +34,6 @@
 		<scope>provided</scope>
 	</dependency>
 	<dependency>
-	    <groupId>org.javassist</groupId>
-	    <artifactId>javassist</artifactId>
-	    <version>3.27.0-GA</version>
-	    <scope>provided</scope>
-	</dependency>
-	<dependency>
-		<groupId>com.github.lixiang2114.script</groupId>
-		<artifactId>DynamicScript</artifactId>
-		<version>1.0</version>
-		<scope>provided</scope>
-	</dependency>
-	<dependency>
 		<groupId>org.slf4j</groupId>
 	    <artifactId>slf4j-api</artifactId>
 		<scope>provided</scope>

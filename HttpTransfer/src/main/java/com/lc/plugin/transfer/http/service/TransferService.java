@@ -115,6 +115,9 @@ public class TransferService extends HttpAction {
 			String line=null;
 			RecvType recvType=httpConfig.recvType;
 			switch(recvType){
+				case StreamBody:
+					 line=request.getStreamBody();
+					 break;
 				case MessageBody:
 					 line=request.getJsonBody();
 					 break;

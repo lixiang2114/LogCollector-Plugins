@@ -1,11 +1,8 @@
 package com.lc.plugin.extend.filter.config;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -14,9 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.comps.Flow;
+import com.github.lixiang2114.flow.context.Context;
+import com.github.lixiang2114.flow.util.ClassLoaderUtil;
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.github.lixiang2114.flow.util.PropertiesReader;
-import com.github.lixiang2114.script.dynamic.DyScript;
 
 /**
  * @author Lixiang
@@ -30,19 +28,9 @@ public class FilterConfig {
 	private File filterPath;
 	
 	/**
-	 * 主脚本文件
-	 */
-	public File mainScript;
-	
-	/**
-	 * 主脚本类名
+	 * 入口类名
 	 */
 	public String mainClass;
-	
-	/**
-	 * 主脚本方法
-	 */
-	public String mainMethodDefine;
 	
 	/**
 	 * 过滤器参数配置
@@ -52,22 +40,12 @@ public class FilterConfig {
 	/**
 	 * 入口函数名
 	 */
-	public static final String MAIN_METHOD="main";
-	
-	/**
-	 * 英文点号正则式
-	 */
-	private static final Pattern DOT_REGEX=Pattern.compile("\\.");
+	public String mainMethod;
 	
 	/**
 	 * 英文逗号正则式
 	 */
 	private static final Pattern COMMA_REGEX=Pattern.compile(",");
-	
-	/**
-	 * 空白正则式
-	 */
-	private static final Pattern BLANK_REGEX=Pattern.compile("\\s+");
 	
 	/**
 	 * 日志工具
@@ -86,52 +64,35 @@ public class FilterConfig {
 	 * @param config
 	 */
 	public FilterConfig config() {
-		String mainScriptStr=config.getProperty("mainScript");
-		if(null!=mainScriptStr) {
-			mainScriptStr=mainScriptStr.trim();
-			if(0!=mainScriptStr.length()) mainScript=new File(filterPath,"script/"+mainScriptStr);
-		}
+		File libPath=new File(filterPath,"lib");
+		File binPath=new File(filterPath,"bin");
+		File srcPath=new File(filterPath,"script");
+		File appPath=new File(Context.projectFile,"lib");
 		
-		if(null==mainScript) {
-			mainScript=new File(filterPath,"script/DefaultClass.java");
+		if(ClassLoaderUtil.compileJavaSource(srcPath,binPath,new File[]{appPath,libPath})) {
+			ClassLoaderUtil.addFileToCurrentClassPath(binPath);
 		}else{
-			if(mainScript.isDirectory()) {
-				log.error("{} can not be directory...",mainScript);
-				throw new RuntimeException(mainScript+" can not be directory...");
-			}
+			log.error("compile script failure: {}",srcPath.getAbsolutePath());
+			throw new RuntimeException("compile script failure: "+srcPath.getAbsolutePath());
 		}
 		
-		mainClass=BLANK_REGEX.matcher(DOT_REGEX.split(mainScript.getName())[0].trim()).replaceAll("");
-		
-		try{
-			mainMethodDefine=new String(Files.readAllBytes(mainScript.toPath()),Charset.defaultCharset()).trim();
-			log.info("\nload mainClass: {}\nload mainMethod:\n{}\n",mainClass,mainMethodDefine);
-			String[] methodParts=BLANK_REGEX.split(mainMethodDefine.substring(0, mainMethodDefine.indexOf("(")));
-			if(!MAIN_METHOD.equals(methodParts[methodParts.length-1].trim())) throw new IOException("must define main method in main script file: 'public static Object main(Object ARG){...}'");
-		}catch(IOException e) {
-			log.error("read main script file occur error: ",e);
-			throw new RuntimeException(e);
+		String mainClassStr=config.getProperty("mainClass");
+		if(null==mainClassStr) {
+			mainClass="DefaultClass";
+		}else{
+			mainClassStr=mainClassStr.trim();
+			mainClass=0==mainClassStr.length()?"DefaultClass":mainClassStr;
 		}
 		
-		dynamicLinkLoad(mainMethodDefine);
-		
-		try{
-			DyScript.addClass(mainClass);
-			DyScript.addFunction(mainClass,mainMethodDefine);
-		}catch(Exception e) {
-			log.error("load main script occur error: ",e);
-			throw new RuntimeException(e);
+		String mainMethodStr=config.getProperty("mainMethod");
+		if(null==mainMethodStr) {
+			mainMethod="main";
+		}else{
+			mainMethodStr=mainMethodStr.trim();
+			mainMethod=0==mainMethodStr.length()?"main":mainMethodStr;
 		}
 		
 		return this;
-	}
-	
-	/**
-	 * 动态递归解析、链接并装载类
-	 * @param methodDefine 方法定义
-	 */
-	private static final void dynamicLinkLoad(String methodDefine) {
-		//后期扩展此功能
 	}
 	
 	/**
@@ -205,9 +166,9 @@ public class FilterConfig {
 	 */
 	public String collectRealtimeParams() {
 		HashMap<String,Object> map=new HashMap<String,Object>();
+		map.put("filterPath", filterPath);
 		map.put("mainClass", mainClass);
-		map.put("mainScript", mainScript);
-		map.put("mainMethodDefine", mainMethodDefine);
+		map.put("mainMethod", mainMethod);
 		return map.toString();
 	}
 }

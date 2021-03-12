@@ -16,6 +16,12 @@ public enum RecvType {
 	 * 适合于MIME(application/x-www-form-urlencoded)
 	 */
 	QueryString("QueryString"),
+	
+	/**
+	 * 消息实体
+	 * 适合于MIME(application/octet-stream)
+	 */
+	StreamBody("StreamBody"),
 
 	/**
 	 * 消息实体

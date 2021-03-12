@@ -7,25 +7,18 @@ import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.comps.Channel;
 import com.github.lixiang2114.flow.plugins.adapter.FilterPluginAdapter;
-import com.github.lixiang2114.script.dynamic.DyScript;
 import com.lc.plugin.extend.filter.config.FilterConfig;
+import com.lc.plugin.extend.filter.util.DyScriptUtil;
 
 /**
  * @author Lixiang
  * @description 扩展过滤器
- * JAVA脚本需参照JDK1.5版本以前的规范来编写(如:不能使用foreach循环等)
  */
-@SuppressWarnings("static-access")
 public class ExtendFilter extends FilterPluginAdapter{
 	/**
 	 * 过滤器配置
 	 */
 	private FilterConfig filterConfig;
-	
-	/**
-	 * 上下文类装载器 
-	 */
-	private ClassLoader classLoader;
 	
 	/**
 	 * 日志工具
@@ -41,7 +34,6 @@ public class ExtendFilter extends FilterPluginAdapter{
 			return false;
 		}
 		
-		this.classLoader=DyScript.geteExtendClassLoader(Thread.currentThread().getContextClassLoader());
 		this.filterConfig=new FilterConfig(flow).config();
 		return true;
 	}
@@ -56,14 +48,14 @@ public class ExtendFilter extends FilterPluginAdapter{
 		
 		flow.filterStart=true;
 		String mainClass=filterConfig.mainClass;
-		String mainMethod=filterConfig.MAIN_METHOD;
+		String mainMethod=filterConfig.mainMethod;
 		try{
 			String message=null;
 			while(flow.filterStart) {
 				if(null==(message=sourceToFilterChannel.get())) continue;
 				if(0==(message=message.trim()).length()) continue;
 				
-				Object result=DyScript.execFunc(classLoader,mainClass,mainMethod, message);
+				Object result=DyScriptUtil.execFunc(mainClass, mainMethod, message);
 				
 				if(null==result) continue;
 				String outLine=result.toString().trim();

@@ -74,6 +74,11 @@ public class HttpConfig {
 	private Integer batchSize;
 	
 	/**
+	 * 协议发送类型
+	 */
+	public RecvType sendType;
+	
+	/**
 	 * 是否需要登录
 	 */
 	public boolean requireLogin;
@@ -207,6 +212,7 @@ public class HttpConfig {
 			}
 		}
 		
+		sendType=RecvType.valueOf(config.getProperty("sendType","StreamBody").trim());
 		String messageFieldStr=config.getProperty("messageField");
 		if(null!=messageFieldStr) {
 			String messageFields=messageFieldStr.trim();
@@ -291,6 +297,7 @@ public class HttpConfig {
 		map.put("userField", userField);
 		map.put("loginURL", loginURL);
 		map.put("passField", passField);
+		map.put("sendType", sendType);
 		map.put("batchSize", batchSize);
 		map.put("passWord", passWord);
 		map.put("userName", userName);

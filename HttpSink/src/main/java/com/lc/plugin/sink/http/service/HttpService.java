@@ -12,6 +12,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import com.github.lixiang2114.flow.util.RestClient;
 import com.github.lixiang2114.flow.util.RestClient.WebResponse;
 import com.lc.plugin.sink.http.config.HttpConfig;
+import com.lc.plugin.sink.http.config.RecvType;
 
 /**
  * @author Lixiang
@@ -91,8 +92,22 @@ public class HttpService {
 	public boolean post(String message) throws Exception {
 		if(message.isEmpty()) return true;
 		
+		RecvType sendType=httpConfig.sendType;
 		HttpHeaders httpHeaders=RestClient.getDefaultRequestHeader();
-		httpHeaders.setContentType(MediaType.APPLICATION_JSON_UTF8);
+		switch(sendType){
+			case MessageBody:
+				httpHeaders.setContentType(MediaType.APPLICATION_JSON_UTF8);
+				break;
+			case StreamBody:
+				httpHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+				break;
+			case QueryString:
+			case ParamMap:
+				httpHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+				break;
+			default:
+				log.info("Error: unknow sendType!");
+		}
 		
 		LinkedMultiValueMap<String,Object> httpBody=null;
 		if(null!=httpConfig.messageField && 0!=httpConfig.messageField.length()) {

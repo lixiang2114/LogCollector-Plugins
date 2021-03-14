@@ -28,6 +28,13 @@ public class FilterConfig {
 	private File filterPath;
 	
 	/**
+	 * 是否采用透传模式
+	 * true:忽略解析脚本,直接透传上游通道数据到下游通道
+	 * false:默认值,执行脚本解析,并将解析结果压入下游通道
+	 */
+	public boolean through;
+	
+	/**
 	 * 入口类名
 	 */
 	public String mainClass;
@@ -64,6 +71,10 @@ public class FilterConfig {
 	 * @param config
 	 */
 	public FilterConfig config() {
+		String throughStr=config.getProperty("through","false").trim();
+		this.through=Boolean.parseBoolean(0==throughStr.length()?"false":throughStr);
+		if(this.through) return this;
+		
 		File libPath=new File(filterPath,"lib");
 		File binPath=new File(filterPath,"bin");
 		File srcPath=new File(filterPath,"script");
@@ -166,6 +177,7 @@ public class FilterConfig {
 	 */
 	public String collectRealtimeParams() {
 		HashMap<String,Object> map=new HashMap<String,Object>();
+		map.put("through", through);
 		map.put("filterPath", filterPath);
 		map.put("mainClass", mainClass);
 		map.put("mainMethod", mainMethod);

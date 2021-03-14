@@ -51,17 +51,25 @@ public class ExtendFilter extends FilterPluginAdapter{
 		String mainMethod=filterConfig.mainMethod;
 		try{
 			String message=null;
-			while(flow.filterStart) {
-				if(null==(message=sourceToFilterChannel.get())) continue;
-				if(0==(message=message.trim()).length()) continue;
-				
-				Object result=DyScriptUtil.execFunc(mainClass, mainMethod, message);
-				
-				if(null==result) continue;
-				String outLine=result.toString().trim();
-				
-				if(0==outLine.length()) continue;
-				filterToSinkChannel.put(outLine);
+			if(filterConfig.through) {
+				while (this.flow.filterStart) {
+					if (null==(message=sourceToFilterChannel.get())) continue;
+					if(0==(message=message.trim()).length()) continue;
+					filterToSinkChannel.put(message);
+				}
+			}else{
+				while(flow.filterStart) {
+					if(null==(message=sourceToFilterChannel.get())) continue;
+					if(0==(message=message.trim()).length()) continue;
+					
+					Object result=DyScriptUtil.execFunc(mainClass, mainMethod, message);
+					
+					if(null==result) continue;
+					String outLine=result.toString().trim();
+					
+					if(0==outLine.length()) continue;
+					filterToSinkChannel.put(outLine);
+				}
 			}
 		}catch(InterruptedException e){
 			log.warn("filter plugin is interrupted while waiting...");

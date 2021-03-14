@@ -65,6 +65,7 @@ public class DyScriptUtil {
 			Class<?>[] destTypes=method.getParameterTypes();
 			if(!compatible(destTypes,argTypes)) continue;
 			targetMethod=method;
+			break;
 		}
 		
 		if(null==targetMethod) throw new RuntimeException("not found method: "+methodName);

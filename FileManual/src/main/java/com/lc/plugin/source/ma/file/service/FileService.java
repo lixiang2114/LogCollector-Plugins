@@ -6,19 +6,29 @@ import java.io.RandomAccessFile;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import com.github.lixiang2114.flow.comps.Channel;
+import com.github.lixiang2114.flow.thread.SpringThreadPool;
 import com.lc.plugin.source.ma.file.config.FileConfig;
+import com.lc.plugin.source.ma.file.config.ScanType;
+import com.lc.plugin.source.ma.file.handler.FileHandler;
 
 /**
  * @author Lixiang
- * @description 文件日志服务
+ * @description 日志文件服务
  */
+@SuppressWarnings("unchecked")
 public class FileService {
 	/**
-	 * FileSource配置
+	 * File配置
 	 */
 	private FileConfig fileConfig;
+	
+	/**
+	 * 过滤器通道对象
+	 */
+	private Channel<String> filterChannel;
 	
 	/**
 	 * 日志工具
@@ -39,45 +49,149 @@ public class FileService {
 		fileConfig.flow.sourceStart=false;
 		return true;
 	}
-
+	
 	/**
 	 * 启动离线ETL流程(读取预置日志文件)
+	 * @param sourceToFilterChannel 下游通道对象
+	 * @return 是否执行成功
+	 * @throws Exception
 	 */
-	public Object startManualETLProcess(Channel<String> sourceToFilterChannel) {
-		RandomAccessFile raf=null;
+	public Object startManualETLProcess(Channel<String> sourceToFilterChannel) throws Exception {
 		log.info("execute manual ETL process...");
-		File manualLogFile=fileConfig.manualLoggerFile;
+		Boolean result=true;
+		this.filterChannel=sourceToFilterChannel;
+		if(fileConfig.scanType==ScanType.file) { //扫描单个文件
+			log.info("hand single file...");
+			result=disposeFile();
+			try {
+				if(result) {
+					log.info("FileManual plugin manual etl process normal exit,execute checkpoint...");
+				}else{
+					log.info("FileManual plugin manual etl process error exit,execute checkpoint...");
+				}
+				fileConfig.refreshCheckPoint();
+			} catch (IOException e) {
+				log.info("FileManual plugin execute checkpoint occur error: {}",e);
+			}
+		}else{ //扫描指定目录
+			File[] files=fileConfig.manualPath.listFiles();
+			if(0==files.length) {
+				log.info("there are no files to process in path: {}",fileConfig.manualPath);
+				return true;
+			}
+			
+			if(fileConfig.multiThread) { //异步并发递归扫描每个文件
+				log.info("async hand multi file...");
+				ThreadPoolTaskExecutor threadPool=SpringThreadPool.getSpringThreadPool(ThreadPoolTaskExecutor.class);
+				if(null==threadPool) {
+					log.error("multiThread is true and unable to get spring thread pool...");
+					throw new RuntimeException("multiThread is true and unable to get spring thread pool...");
+				}
+				asyncRead(fileConfig.manualPath,threadPool);
+			}else{ //串行递归扫描每个文件
+				log.info("sync hand multi file...");
+				if(null!=fileConfig.manualFile) {
+					if(!disposeFile()) return false;
+					fileConfig.readedFiles.add(fileConfig.manualFile.getAbsolutePath());
+				}
+				
+				result=syncRead(fileConfig.manualPath);
+				try {
+					if(result) {
+						log.info("FileManual plugin manual etl process normal exit,execute checkpoint...");
+					}else{
+						log.info("FileManual plugin manual etl process error exit,execute checkpoint...");
+					}
+					fileConfig.refreshCheckPoint();
+				} catch (IOException e) {
+					log.info("FileManual plugin execute checkpoint occur error: {}",e);
+				}
+			}
+		}
+		
+		return result;
+	}
+	
+	/**
+	 * 同步扫描指定目录
+	 * @param file 被扫描的文件对象
+	 * @return 是否读取成功
+	 * @throws Exception
+	 */
+	private boolean syncRead(File file) throws Exception {
+		if(file.isFile()) {
+			fileConfig.manualFile=file;
+			fileConfig.lineNumber=0;
+			fileConfig.byteNumber=0;
+			
+			log.info("starting dispose file: {}",fileConfig.manualFile.getAbsolutePath());
+			Boolean flag=disposeFile();
+			if(null!=flag && !flag) return false;
+			
+			log.info("finish dispose file: {}",fileConfig.manualFile.getAbsolutePath());
+			fileConfig.readedFiles.add(fileConfig.manualFile.getAbsolutePath());
+			return true;
+		}
+		
+		File[] files=file.listFiles();
+		for(File nextFile:files) {
+			if(fileConfig.readedFiles.contains(nextFile.getAbsolutePath())) continue;
+			if(!syncRead(nextFile)) return false;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * 异步扫描指定目录
+	 * @param file 被扫描的文件对象
+	 * @return 是否读取成功
+	 * @throws Exception
+	 */
+	private boolean asyncRead(File file,ThreadPoolTaskExecutor threadPool) throws Exception {
+		if(file.isFile()) {
+			threadPool.submit(new FileHandler(file,fileConfig,filterChannel));
+			return true;
+		}
+		
+		for(File nextFile:file.listFiles()) asyncRead(nextFile,threadPool);
+		
+		return true;
+	}
+
+	/**
+	 * 扫描单个文件
+	 */
+	public boolean disposeFile() {
+		boolean isNormal=false;
+		RandomAccessFile raf=null;
 		try{
-			raf=new RandomAccessFile(manualLogFile, "r");
-			if(0!=fileConfig.manualByteNumber)raf.seek(fileConfig.manualByteNumber);
+			raf=new RandomAccessFile(fileConfig.manualFile, "r");
+			if(0!=fileConfig.byteNumber)raf.seek(fileConfig.byteNumber);
 			while(fileConfig.flow.sourceStart){
-				fileConfig.manualLineNumber=fileConfig.manualLineNumber++;
-				fileConfig.manualByteNumber=raf.getFilePointer();
 				String line=raf.readLine();
 				if(null==line) break;
 				
+				fileConfig.lineNumber=fileConfig.lineNumber++;
+				fileConfig.byteNumber=raf.getFilePointer();
+				
 				String record=line.trim();
-				if(0==record.length()) continue;
-				sourceToFilterChannel.put(record);
+				if(record.isEmpty()) continue;
+				filterChannel.put(record);
 			}
 			
-			log.info("FileManual plugin manual etl process normal exit,execute checkpoint...");
-			fileConfig.refreshCheckPoint();
+			isNormal=true;
 		}catch(Exception e){
-			e.printStackTrace();
-			try {
-				fileConfig.refreshCheckPoint();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-			log.info("FileManual plugin manual etl process occur Error...",e);
+			isNormal=false;
+			log.error("FileManual plugin dispose file occur error...",e);
 		}finally{
 			try{
 				if(null!=raf) raf.close();
 			}catch(IOException e){
-				e.printStackTrace();
+				log.error("FileManual plugin close RandomAccessFile stream occur error...",e);
 			}
 		}
-		return true;
+		
+		return isNormal;
 	}
 }

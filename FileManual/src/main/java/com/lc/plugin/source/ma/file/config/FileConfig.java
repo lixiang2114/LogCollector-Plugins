@@ -6,7 +6,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
@@ -34,24 +39,49 @@ public class FileConfig {
 	public File pluginPath;
 	
 	/**
-	 * 离线推送的日志文件
+	 * 离线推送的文件
 	 */
-	public File manualLoggerFile;
+	public File manualFile;
+	
+	/**
+	 * 离线推送的目录
+	 */
+	public File manualPath;
 	
 	/**
 	 * 离线文件已经读取的行数
 	 */
-	public int manualLineNumber;
+	public int lineNumber;
 	
 	/**
 	 * 离线文件已经读取的字节数量
 	 */
-	public long manualByteNumber;
+	public long byteNumber;
+	
+	/**
+	 * 已读取文件名检查点
+	 */
+	public Path readedSetFile;
+	
+	/**
+	 * 扫描类型
+	 */
+	public ScanType scanType;
+	
+	/**
+	 * 是否启用多线程处理文件
+	 */
+	public boolean multiThread;
 	
 	/**
 	 * 日志(检查点)配置
 	 */
 	public Properties loggerConfig;
+	
+	/**
+	 * 已读取的文件列表
+	 */
+	public HashSet<String> readedFiles;
 	
 	/**
 	 * 英文逗号正则式
@@ -73,24 +103,73 @@ public class FileConfig {
 	 * @param config
 	 */
 	public FileConfig config() {
-		//读取日志文件配置
 		File configFile=new File(pluginPath,"source.properties");
 		loggerConfig=PropertiesReader.getProperties(configFile);
 		
-		//离线手动推送的日志文件
-		String manualFileName=loggerConfig.getProperty("manualLoggerFile");
-		if(null==manualFileName || 0==manualFileName.trim().length()) {
-			log.warn("not found parameter: 'manualLoggerFile',can not offline send with manual...");
+		String scanTypeStr=loggerConfig.getProperty("scanType","file").trim();
+		scanType=ScanType.valueOf(scanTypeStr.isEmpty()?"file":scanTypeStr);
+		
+		if(ScanType.file==scanType) {
+			String manualFileName=loggerConfig.getProperty("manualFile","").trim();
+			if(manualFileName.isEmpty()) {
+				log.error("not found parameter: 'manualFile',can not offline send with manual...");
+				throw new RuntimeException("not found parameter: 'manualFile',can not offline send with manual...");
+			}else{
+				File file=new File(manualFileName);
+				if(!file.exists()){
+					log.error("specify file is not exists: {}",manualFileName);
+					throw new RuntimeException("specify file is not exists: "+manualFileName);
+				}
+				
+				if(file.isDirectory()){
+					log.error("specify file is an directory: {}",manualFileName);
+					throw new RuntimeException("specify file is an directory: "+manualFileName);
+				}
+				
+				manualFile=file;
+			}
 		}else{
-			File file=new File(manualFileName.trim());
-			if(file.exists() && file.isFile()) manualLoggerFile=file;
+			String manualPathName=loggerConfig.getProperty("manualPath","").trim();
+			if(manualPathName.isEmpty()) {
+				log.error("not found parameter: 'manualPath',can not offline send with manual...");
+				throw new RuntimeException("not found parameter: 'manualPath',can not offline send with manual...");
+			}else{
+				File file=new File(manualPathName);
+				if(!file.exists()){
+					log.error("specify path is not exists: {}",manualPathName);
+					throw new RuntimeException("specify path is not exists: "+manualPathName);
+				}
+				
+				if(file.isFile()){
+					log.error("specify path is an file: {}",manualPathName);
+					throw new RuntimeException("specify path is an file: "+manualPathName);
+				}
+				
+				manualPath=file;
+			}
 		}
 		
-		//离线手动推送的日志文件检查点
-		manualLineNumber=Integer.parseInt(loggerConfig.getProperty("manualLineNumber","0"));
-		log.info("manualLineNumber is: "+manualLineNumber);
-		manualByteNumber=Integer.parseInt(loggerConfig.getProperty("manualByteNumber","0"));
-		log.info("manualByteNumber is: "+manualByteNumber);
+		String multiThreadStr=loggerConfig.getProperty("multiThread","false").trim();
+		this.multiThread=Boolean.parseBoolean(multiThreadStr.isEmpty()?"false":multiThreadStr);
+		
+		if(!multiThread && ScanType.path==scanType) {
+			String readedFileStr=loggerConfig.getProperty("readedFile","readedFiles.ini").trim();
+			this.readedSetFile=new File(pluginPath,readedFileStr.isEmpty()?"readedFiles.ini":readedFileStr).toPath();
+			try {
+				this.readedFiles=new HashSet<String>(Files.readAllLines(readedSetFile, StandardCharsets.UTF_8));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		String lineNumberStr=loggerConfig.getProperty("lineNumber","0").trim();
+		lineNumber=Integer.parseInt(lineNumberStr.isEmpty()?"0":lineNumberStr);
+		
+		String byteNumberStr=loggerConfig.getProperty("byteNumber","0").trim();
+		byteNumber=Integer.parseInt(byteNumberStr.isEmpty()?"0":byteNumberStr);
+		
+		log.info("lineNumber is: "+lineNumber);
+		log.info("byteNumber is: "+byteNumber);
 		
 		return this;
 	}
@@ -100,9 +179,14 @@ public class FileConfig {
 	 * @throws IOException
 	 */
 	public void refreshCheckPoint() throws IOException{
-		loggerConfig.setProperty("manualLineNumber",""+manualLineNumber);
-		loggerConfig.setProperty("manualByteNumber",""+manualByteNumber);
-		loggerConfig.setProperty("manualLoggerFile", manualLoggerFile.getAbsolutePath());
+		loggerConfig.setProperty("lineNumber",""+lineNumber);
+		loggerConfig.setProperty("byteNumber",""+byteNumber);
+		if(null!=manualFile) loggerConfig.setProperty("manualFile", manualFile.getAbsolutePath());
+		if(null!=manualPath) loggerConfig.setProperty("manualPath", manualPath.getAbsolutePath());
+		
+		if(null!=readedFiles && !readedFiles.isEmpty()) {
+			if(null!=readedSetFile) Files.write(readedSetFile, readedFiles, StandardCharsets.UTF_8, StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+		}
 		
 		OutputStream fos=null;
 		try{
@@ -185,10 +269,15 @@ public class FileConfig {
 	 */
 	public String collectRealtimeParams() {
 		HashMap<String,Object> map=new HashMap<String,Object>();
+		map.put("scanType", scanType);
 		map.put("pluginPath", pluginPath);
-		map.put("manualLoggerFile", manualLoggerFile);
-		map.put("manualLineNumber", manualLineNumber);
-		map.put("manualByteNumber", manualByteNumber);
+		map.put("manualFile", manualFile);
+		map.put("readedFiles", readedFiles);
+		map.put("manualPath", manualPath);
+		map.put("multiThread", multiThread);
+		map.put("lineNumber", lineNumber);
+		map.put("byteNumber", byteNumber);
+		map.put("readedSetFile", readedSetFile);
 		return map.toString();
 	}
 }

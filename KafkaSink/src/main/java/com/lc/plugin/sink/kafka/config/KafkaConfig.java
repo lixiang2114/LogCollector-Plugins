@@ -58,7 +58,7 @@ public class KafkaConfig {
 	private Properties config;
 	
 	/**
-	 * 连接主题名称
+	 * 默认连接主题名称
 	 */
 	private String defaultTopic;
 	
@@ -382,7 +382,9 @@ public class KafkaConfig {
 		map.put("defaultTopic", defaultTopic);
 		map.put("fieldSeparator", fieldSeparator);
 		map.put("maxRetryTimes", maxRetryTimes);
+		map.put("autoCreateTopic", autoCreateTopic);
 		map.put("preFailSinkSetSize", preFailSinkSet.size());
+		map.put("partitionNumPerTopic", partitionNumPerTopic);
 		return map.toString();
 	}
 }

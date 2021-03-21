@@ -120,7 +120,7 @@ public class MqttService {
 		}else{
 			HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(line, HashMap.class);
 			String topic=(String)recordMap.remove(config.getTopicField());
-			String record=(String)recordMap.values().iterator().next();
+			String record=CommonUtil.javaToJsonStr(recordMap);
 			if(isEmpty(topic)) {
 				retArr[0]=config.getDefaultTopic();
 				retArr[1]=record.trim();

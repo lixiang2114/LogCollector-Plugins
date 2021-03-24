@@ -101,6 +101,11 @@ public class FileService {
 					//当前转存日志文件达到最大值则增加转存日志文件
 					String curTransSaveFilePath=fileConfig.transferSaveFile.getAbsolutePath();
 					int lastIndex=curTransSaveFilePath.lastIndexOf(".");
+					if(-1==lastIndex) {
+						lastIndex=curTransSaveFilePath.length();
+						curTransSaveFilePath=curTransSaveFilePath+".0";
+					}
+					
 					fileConfig.transferSaveFile=new File(curTransSaveFilePath.substring(0,lastIndex+1)+(Integer.parseInt(curTransSaveFilePath.substring(lastIndex+1))+1));
 					log.info("FileTransfer switch transfer save log file to: "+fileConfig.transferSaveFile.getAbsolutePath());
 					bw.close();

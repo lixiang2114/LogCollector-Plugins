@@ -44,7 +44,7 @@ public class FileConfig {
 	public Long maxFileSize;
 	
 	/**
-	 * Mqtt客户端配置
+	 * 文件客户端配置
 	 */
 	private Properties config;
 	

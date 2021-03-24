@@ -29,6 +29,7 @@ public class DefaultFilter extends FilterPluginAdapter{
 			String message=null;
 			while(flow.filterStart) {
 				if(null==(message=sourceToFilterChannel.get())) continue;
+				if((message=message.trim()).isEmpty()) continue;
 				filterToSinkChannel.put(message);
 			}
 		}catch(InterruptedException e){

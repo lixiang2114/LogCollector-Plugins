@@ -54,6 +54,11 @@ public class FileConfig {
 	public long byteNumber;
 	
 	/**
+	 * 数据扫描模式
+	 */
+	public ScanMode scanMode;
+	
+	/**
 	 * 缓冲日志文件被读完后自动删除
 	 */
 	public Boolean delOnReaded;
@@ -89,17 +94,38 @@ public class FileConfig {
 		File configFile=new File(pluginPath,"source.properties");
 		loggerConfig=PropertiesReader.getProperties(configFile);
 		
+		//数据扫描模式
+		String scanModeStr=loggerConfig.getProperty("scanMode","file").trim();
+		scanMode=scanModeStr.isEmpty()?ScanMode.valueOf("file"):ScanMode.valueOf(scanModeStr);
+		
+		if(ScanMode.channel==scanMode) return this;
+		
 		//默认实时缓冲日志文件
 		File bufferLogFile=new File(transferPath,"buffer.log.0");
 		
 		//实时自动推送的日志文件
-		String loggerFileName=loggerConfig.getProperty("loggerFile");
-		if(null==loggerFileName || 0==loggerFileName.trim().length()) {
+		String loggerFileName=loggerConfig.getProperty("loggerFile","").trim();
+		if(loggerFileName.isEmpty()) {
 			loggerFile=bufferLogFile;
 			log.warn("not found parameter: 'loggerFile',will be use default...");
 		}else{
-			File file=new File(loggerFileName.trim());
-			if(file.exists() && file.isFile()) loggerFile=file;
+			File file=new File(loggerFileName);
+			if(!file.exists()) {
+				log.warn("file: {} is not exists,it will be create...",file.getAbsolutePath());
+				try {
+					file.createNewFile();
+				} catch (IOException e) {
+					log.error("create logger file occur error:",e);
+					throw new RuntimeException(e);
+				}
+			}
+			
+			if(file.isDirectory()) {
+				log.error("logger file can not be directory...");
+				throw new RuntimeException("logger file can not be directory...");
+			}
+			
+			loggerFile=file;
 		}
 		
 		log.info("realTime logger file is: "+loggerFile.getAbsolutePath());
@@ -207,6 +233,7 @@ public class FileConfig {
 	public String collectRealtimeParams() {
 		HashMap<String,Object> map=new HashMap<String,Object>();
 		map.put("loggerFile", loggerFile);
+		map.put("scanMode", scanMode);
 		map.put("pluginPath", pluginPath);
 		map.put("lineNumber", lineNumber);
 		map.put("byteNumber", byteNumber);

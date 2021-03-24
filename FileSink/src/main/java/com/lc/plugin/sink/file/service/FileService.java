@@ -41,7 +41,7 @@ public class FileService {
 	}
 	
 	/**
-	 * 异步写出日志文件
+	 * 写出日志文件
 	 * @param message 消息参数
 	 * @throws Exception 
 	 */

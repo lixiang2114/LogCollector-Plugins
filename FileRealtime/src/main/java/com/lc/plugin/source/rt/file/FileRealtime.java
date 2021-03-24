@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.github.lixiang2114.flow.comps.Channel;
 import com.github.lixiang2114.flow.plugins.adapter.RealtimePluginAdapter;
 import com.lc.plugin.source.rt.file.config.FileConfig;
+import com.lc.plugin.source.rt.file.config.ScanMode;
 import com.lc.plugin.source.rt.file.service.FileService;
 
 /**
@@ -55,7 +56,18 @@ public class FileRealtime extends RealtimePluginAdapter {
 		}
 		
 		flow.sourceStart=true;
-		return fileService.startRealtimeETLProcess(sourceToFilterChannel);
+		if(ScanMode.file==fileConfig.scanMode) {
+			return fileService.startRealtimeETLProcess(sourceToFilterChannel);
+		}
+		
+		String message = null;
+		while(flow.sourceStart){
+			if (null==(message=(String)transferToETLChannel.get())) continue;
+			if((message=message.trim()).isEmpty()) continue;
+			sourceToFilterChannel.put(message);
+		}
+		
+		return true;
 	}
 	
 	@Override

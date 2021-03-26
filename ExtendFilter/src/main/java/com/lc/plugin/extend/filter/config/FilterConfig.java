@@ -71,8 +71,8 @@ public class FilterConfig {
 	 * @param config
 	 */
 	public FilterConfig config() {
-		String throughStr=config.getProperty("through","false").trim();
-		this.through=Boolean.parseBoolean(0==throughStr.length()?"false":throughStr);
+		String throughStr=config.getProperty("through","").trim();
+		this.through=Boolean.parseBoolean(throughStr.isEmpty()?"false":throughStr);
 		if(this.through) return this;
 		
 		File libPath=new File(filterPath,"lib");
@@ -87,21 +87,11 @@ public class FilterConfig {
 			throw new RuntimeException("compile script failure: "+srcPath.getAbsolutePath());
 		}
 		
-		String mainClassStr=config.getProperty("mainClass");
-		if(null==mainClassStr) {
-			mainClass="DefaultClass";
-		}else{
-			mainClassStr=mainClassStr.trim();
-			mainClass=0==mainClassStr.length()?"DefaultClass":mainClassStr;
-		}
+		String mainClassStr=config.getProperty("mainClass","").trim();
+		this.mainClass=mainClassStr.isEmpty()?"DefaultClass":mainClassStr;
 		
-		String mainMethodStr=config.getProperty("mainMethod");
-		if(null==mainMethodStr) {
-			mainMethod="main";
-		}else{
-			mainMethodStr=mainMethodStr.trim();
-			mainMethod=0==mainMethodStr.length()?"main":mainMethodStr;
-		}
+		String mainMethodStr=config.getProperty("mainMethod","").trim();
+		this.mainMethod=mainMethodStr.isEmpty()?"main":mainMethodStr;
 		
 		return this;
 	}

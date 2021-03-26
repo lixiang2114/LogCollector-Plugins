@@ -62,48 +62,48 @@ public class FlowSink extends SinkPluginAdapter{
 		try{
 			String message=null;
 			switch(sendMode) {
-			case rep:
-				while(flow.sinkStart) {
-					if(null==(message=filterToSinkChannel.get())) continue;
-					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.repPipeLine(message)) return false;
-				}
-				break;
-			case field:
-				while(flow.sinkStart) {
-					if(null==(message=filterToSinkChannel.get())) continue;
-					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.fieldPipeLine(message)) return false;
-				}
-				break;
-			case hash:
-				while(flow.sinkStart) {
-					if(null==(message=filterToSinkChannel.get())) continue;
-					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.hashPipeLine(message)) return false;
-				}
-				break;
-			case robin:
-				while(flow.sinkStart) {
-					if(null==(message=filterToSinkChannel.get())) continue;
-					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.robinPipeLine(message)) return false;
-				}
-				break;
-			case random:
-				while(flow.sinkStart) {
-					if(null==(message=filterToSinkChannel.get())) continue;
-					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.randomPipeLine(message)) return false;
-				}
-				break;
-			default:
-				while(flow.sinkStart) {
-					if(null==(message=filterToSinkChannel.get())) continue;
-					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.customPipeLine(message)) return false;
-				}
-		}
+				case rep:
+					while(flow.sinkStart) {
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						if(!flowService.repPipeLine(message)) return false;
+					}
+					break;
+				case field:
+					while(flow.sinkStart) {
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						if(!flowService.fieldPipeLine(message)) return false;
+					}
+					break;
+				case hash:
+					while(flow.sinkStart) {
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						if(!flowService.hashPipeLine(message)) return false;
+					}
+					break;
+				case robin:
+					while(flow.sinkStart) {
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						if(!flowService.robinPipeLine(message)) return false;
+					}
+					break;
+				case random:
+					while(flow.sinkStart) {
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						if(!flowService.randomPipeLine(message)) return false;
+					}
+					break;
+				default:
+					while(flow.sinkStart) {
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						if(!flowService.customPipeLine(message)) return false;
+					}
+			}
 		}catch(Exception e){
 			log.warn("sink plugin is interrupted while waiting...");
 		}

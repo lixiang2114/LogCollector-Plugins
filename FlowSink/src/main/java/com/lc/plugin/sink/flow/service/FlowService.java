@@ -67,7 +67,7 @@ public class FlowService {
 			for(int i=0;i<flowNum;targetFlowList.get(i++).writeMessage(message));
 			return true;
 		} catch (Exception e) {
-			log.error("flow sink rep file process running error...",e);
+			log.error("flow sink rep pipeLine process running error...",e);
 			return false;
 		}
 	}
@@ -97,7 +97,7 @@ public class FlowService {
 		}
 		
 		if(null==itemValues || itemValues.isEmpty()) {
-			log.error("field file process running error: flow name not found by field rule...");
+			log.error("field pipeLine process running error: flow name not found by field rule...");
 			throw new RuntimeException("flow name not found by field rule...");
 		}
 		
@@ -117,7 +117,7 @@ public class FlowService {
 			for(int i=0;i<indexs.length;targetFlowList.get(indexs[i++]).writeMessage(message));
 			return true;
 		} catch (Exception e) {
-			log.error("flow sink field file process running error...",e);
+			log.error("flow sink field pipeLine process running error...",e);
 			return false;
 		}
 	}
@@ -132,7 +132,7 @@ public class FlowService {
 			targetFlowList.get(Math.abs(message.hashCode())%flowNum).writeMessage(message);
 			return true;
 		} catch (Exception e) {
-			log.error("flow sink hash file process running error...",e);
+			log.error("flow sink hash pipeLine process running error...",e);
 			return false;
 		}
 	}
@@ -148,7 +148,7 @@ public class FlowService {
 			targetFlowList.get(counter%flowNum).writeMessage(message);
 			return true;
 		} catch (Exception e) {
-			log.error("flow sink robin file process running error...",e);
+			log.error("flow sink robin pipeLine process running error...",e);
 			return false;
 		}
 	}
@@ -159,12 +159,11 @@ public class FlowService {
 	 * @throws Exception 
 	 */
 	public boolean randomPipeLine(String message) {
-		this.counter=++counter>flowNum?0:counter;
 		try {
 			targetFlowList.get(random.nextInt(flowNum)).writeMessage(message);
 			return true;
 		} catch (Exception e) {
-			log.error("flow sink random file process running error...",e);
+			log.error("flow sink random pipeLine process running error...",e);
 			return false;
 		}
 	}
@@ -177,21 +176,27 @@ public class FlowService {
 	public boolean customPipeLine(String message) {
 		Object result=null;
 		try {
-			result = DyScriptUtil.execFunc(flowConfig.mainClass, flowConfig.mainMethod,flowConfig.targetItems,message);
+			result = DyScriptUtil.execFunc(flowConfig.mainClass, flowConfig.mainMethod,message,flowConfig.targetItems);
 		} catch (Exception e) {
-			log.error("flow sink custom file process running error...",e);
-			throw new RuntimeException("flow sink custom file process running error...",e);
+			log.error("flow sink custom pipeLine process running error...",e);
+			throw new RuntimeException("flow sink custom pipeLine process running error...",e);
 		}
 		
-		int[] indexs=null;
-		if(null==(indexs=(int[])result)) return false;
+		if(null==result) return true;
+		Object[] msgAndIndex=(Object[])result;
+		if(2>msgAndIndex.length) return false;
+		
+		message=(String)msgAndIndex[0];
+		int[] indexs=(int[])msgAndIndex[1];
+		
+		if(null==message || null==indexs || 0==indexs.length) return false;
 		for(int i=0;i<indexs.length;indexs[i]=0>indexs[i]?0:indexs[i++]);
 		
 		try {
 			for(int i=0;i<indexs.length;targetFlowList.get(indexs[i++]).writeMessage(message));
 			return true;
 		} catch (Exception e) {
-			log.error("flow sink custom file process running error...",e);
+			log.error("flow sink custom pipeLine process running error...",e);
 			return false;
 		}
 	}

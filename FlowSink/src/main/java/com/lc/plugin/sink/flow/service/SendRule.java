@@ -7,8 +7,9 @@ package com.lc.plugin.sink.flow.service;
 public interface SendRule {
 	/**
 	 * 获取流程索引表
-	 * @param messageRecord 消息记录
-	 * @return 流程索引表
+	 * @param message 消息记录
+	 * @param itemList 目标项表
+	 * @return
 	 */
-	public int[] main(String[] flowList,String message);
+	public Object[] main(String message,String[] itemList);
 }

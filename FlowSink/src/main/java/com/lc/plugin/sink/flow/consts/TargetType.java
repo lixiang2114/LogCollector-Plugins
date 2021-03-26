@@ -36,8 +36,7 @@ public enum TargetType {
 	public String parentName;
 	
 	public String getSuperName() {
-		if(null==parentName) return name;
-		return parentName;
+		return null==parentName?name:parentName;
 	}
 	
 	public TargetType getSuperType() {

@@ -54,20 +54,20 @@ public class ExtendFilter extends FilterPluginAdapter{
 			if(filterConfig.through) {
 				while (this.flow.filterStart) {
 					if (null==(message=sourceToFilterChannel.get())) continue;
-					if(0==(message=message.trim()).length()) continue;
+					if((message=message.trim()).isEmpty()) continue;
 					filterToSinkChannel.put(message);
 				}
 			}else{
 				while(flow.filterStart) {
 					if(null==(message=sourceToFilterChannel.get())) continue;
-					if(0==(message=message.trim()).length()) continue;
+					if((message=message.trim()).isEmpty()) continue;
 					
 					Object result=DyScriptUtil.execFunc(mainClass, mainMethod, message);
 					
 					if(null==result) continue;
 					String outLine=result.toString().trim();
 					
-					if(0==outLine.length()) continue;
+					if(outLine.isEmpty()) continue;
 					filterToSinkChannel.put(outLine);
 				}
 			}

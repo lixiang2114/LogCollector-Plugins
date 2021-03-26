@@ -1,6 +1,6 @@
 public class DefaultClass {
 	
-	public int[] main(String[] flowList, String message) {
-		return new int[]{0,1};
+	public Object[] main(String message,String[] itemList) {
+		return new Object[]{message,new int[]{0,1}};
 	}
 }

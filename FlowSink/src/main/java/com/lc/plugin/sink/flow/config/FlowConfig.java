@@ -146,7 +146,7 @@ public class FlowConfig {
 		log.info("target file max size is: "+targetFileMaxSize);
 		
 		//转发模式
-		String sendModeStr=getParamValue("sendMode","rep").trim();
+		String sendModeStr=getParamValue("sendMode","").trim();
 		sendMode=sendModeStr.isEmpty()?SendMode.valueOf("rep"):SendMode.valueOf(sendModeStr);
 		
 		//目标项目列表
@@ -199,15 +199,17 @@ public class FlowConfig {
 		log.info("target items are: "+transferMapperSet);
 		
 		if(SendMode.field==sendMode) {
-			String ruleStr=getParamValue("rule","index").trim();
-			String itemSeparator=getParamValue("itemSeparator","!").trim();
+			String ruleStr=getParamValue("rule","").trim();
+			String itemSeparator=getParamValue("itemSeparator","").trim();
 			this.ruleType=RuleType.valueOf(ruleStr.isEmpty()?"index":ruleStr);
 			this.itemRegex=Pattern.compile(itemSeparator.isEmpty()?"!":itemSeparator);
 			if(RuleType.key==ruleType) { //key类型
-				this.itemKey=getParamValue(RuleType.key.typeName,"flows").trim();
+				String keyStr=getParamValue(RuleType.key.typeName,"").trim();
+				this.itemKey=keyStr.isEmpty()?"flows":keyStr;
 			}else{ //index类型
-				String fieldSeparator=getParamValue("fieldSeparator",",").trim();
-				this.itemKey=getParamValue(RuleType.index.typeName,"0").trim();
+				String fieldSeparator=getParamValue("fieldSeparator","").trim();
+				String keyStr=getParamValue(RuleType.index.typeName,"").trim();
+				this.itemKey=keyStr.isEmpty()?"0":keyStr;
 				this.fieldRegex=Pattern.compile(fieldSeparator.isEmpty()?",":fieldSeparator);
 			}
 		}
@@ -225,10 +227,10 @@ public class FlowConfig {
 				throw new RuntimeException("compile script failure: "+srcPath.getAbsolutePath());
 			}
 			
-			String mainClassStr=getParamValue("mainClass","DefaultClass").trim();
+			String mainClassStr=getParamValue("mainClass","").trim();
 			this.mainClass=mainClassStr.isEmpty()?"DefaultClass":mainClassStr;
 			
-			String mainMethodStr=getParamValue("mainMethod","main").trim();
+			String mainMethodStr=getParamValue("mainMethod","").trim();
 			this.mainMethod=mainMethodStr.isEmpty()?"main":mainMethodStr;
 		}
 		

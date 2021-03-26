@@ -148,9 +148,12 @@ public class FlowMapper {
 		targetFlow.transferToSourceChannel.put(line);
 	}
 	
+	/**
+	 * 获取当前流程名称
+	 * @return 流程名称
+	 */
 	public String getFlowName() {
-		if(null==targetFlow) return null;
-		return targetFlow.compName;
+		return null==targetFlow?null:targetFlow.compName;
 	}
 	
 	/**

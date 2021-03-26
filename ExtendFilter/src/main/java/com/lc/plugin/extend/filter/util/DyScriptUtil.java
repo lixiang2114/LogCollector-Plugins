@@ -46,15 +46,15 @@ public class DyScriptUtil {
 	 */
 	public static Object execFunc(ClassLoader classLoader,String className,String methodName,Object... params) throws Exception{
 		if(null==className || null==methodName) throw new RuntimeException("class and method name can not be null...");
-		if(0==(methodName=methodName.trim()).length()) throw new RuntimeException("method name can not be empty...");
-		if(0==(className=className.trim()).length()) throw new RuntimeException("class name can not be empty...");
+		if((methodName=methodName.trim()).isEmpty()) throw new RuntimeException("method name can not be empty...");
+		if((className=className.trim()).isEmpty()) throw new RuntimeException("class name can not be empty...");
 		
 		Class<?>[] argTypes=null;
 		if(null==params) {
 			argTypes=new Class<?>[0];
 		}else{
 			argTypes=new Class[params.length];
-			for(int i=0;i<params.length;argTypes[i]=params[i].getClass(),i++);
+			for(int i=0;i<params.length;argTypes[i]=params[i++].getClass());
 		}
 		
 		Class<?> type=getClass(classLoader,className);
@@ -137,6 +137,6 @@ public class DyScriptUtil {
 	 */
 	public static final boolean isEmpty(String value) {
 		if(null==value) return true;
-		return 0==value.trim().length();
+		return value.trim().isEmpty();
 	}
 }

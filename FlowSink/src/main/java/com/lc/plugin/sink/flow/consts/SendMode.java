@@ -54,8 +54,7 @@ public enum SendMode {
 	public String parentName;
 	
 	public String getSuperName() {
-		if(null==parentName) return name;
-		return parentName;
+		return null==parentName?name:parentName;
 	}
 	
 	public SendMode getSuperType() {

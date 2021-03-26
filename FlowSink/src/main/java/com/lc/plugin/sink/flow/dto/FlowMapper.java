@@ -11,7 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.lixiang2114.flow.comps.Flow;
-import com.lc.plugin.sink.flow.config.SendMode;
+import com.lc.plugin.sink.flow.config.FlowConfig;
+import com.lc.plugin.sink.flow.consts.TargetType;
 
 /**
  * @author Lixiang
@@ -19,19 +20,24 @@ import com.lc.plugin.sink.flow.config.SendMode;
  */
 public class FlowMapper {
 	/**
-	 * 目标流程对象
-	 */
-	private Flow targetFlow;
-	
-	/**
 	 * 转存目标文件
 	 */
 	private File targetFile;
 	
 	/**
-	 * 转发模式
+	 * 目标流程对象
 	 */
-	private SendMode sendMode;
+	private Flow targetFlow;
+	
+	/**
+	 * 目标介质类型
+	 */
+	private TargetType targetType;
+	
+	/**
+	 * 流程发送器配置
+	 */
+	private FlowConfig flowConfig;
 	
 	/**
 	 * 缓冲流写出器
@@ -46,10 +52,10 @@ public class FlowMapper {
 	/**
 	 * 使用磁盘文件初始化(仅磁盘文件)
 	 * @param diskFile 磁盘文件
-	 * @param sendMode 转发模式
 	 */
-	public FlowMapper(File diskFile,SendMode sendMode) {
-		this.sendMode=sendMode;
+	public FlowMapper(File diskFile,FlowConfig flowConfig) {
+		this.targetType=TargetType.file;
+		this.flowConfig=flowConfig;
 		initBufferedWriter(diskFile);
 	}
 	
@@ -58,8 +64,9 @@ public class FlowMapper {
 	 * @param targetFlow 目标流程
 	 * @param sendMode 转发模式
 	 */
-	public FlowMapper(Flow targetFlow,SendMode sendMode) {
-		this.sendMode=sendMode;
+	public FlowMapper(Flow targetFlow,TargetType targetType,FlowConfig flowConfig) {
+		this.targetType=targetType;
+		this.flowConfig=flowConfig;
 		initBufferedWriter(new File((this.targetFlow=targetFlow).sharePath,"buffer.log.0"));
 	}
 	
@@ -76,32 +83,16 @@ public class FlowMapper {
 		}
 	}
 	
-	public File getTargetFile() {
-		return targetFile;
-	}
-	
-	public SendMode getSendMode() {
-		return sendMode;
-	}
-	
-	public String getFlowName() {
-		if(null==targetFlow) return null;
-		return targetFlow.compName;
-	}
-	
-	public void setTargetFile(File targetFile) {
-		try {
-			if(null!=bufferedWriter) bufferedWriter.close();
-		} catch (Exception e) {
-			log.error("close target file stream occur error...",e);
-			throw new RuntimeException("close target file stream occur error...");
-		}
-		
-		try{
-			bufferedWriter=Files.newBufferedWriter((this.targetFile=targetFile).toPath(), StandardCharsets.UTF_8, StandardOpenOption.CREATE,StandardOpenOption.APPEND);
-		}catch(Exception e) {
-			log.error("create target file stream occur error...",e);
-			throw new RuntimeException("create target file stream occur error...");
+	/**
+	 * 写出数据记录
+	 * @param line 数据记录行
+	 * @throws IOException
+	 */
+	public void writeMessage(String line) throws Exception {
+		if(TargetType.file==targetType.getSuperType()) {
+			writeFileLine(line);
+		}else{
+			writeChannel(line);
 		}
 	}
 	
@@ -110,10 +101,38 @@ public class FlowMapper {
 	 * @param line 数据记录行
 	 * @throws IOException
 	 */
-	public void writeFileLine(String line) throws IOException {
+	private void writeFileLine(String line) throws IOException {
 		bufferedWriter.write(line);
 		bufferedWriter.newLine();
 		bufferedWriter.flush();
+		
+		//当前转存日志文件未达到最大值则继续写转存日志文件
+		if(flowConfig.targetFileMaxSize>targetFile.length()) return;
+		
+		//当前转存日志文件达到最大值则增加转存日志文件
+		String curTransSaveFilePath=targetFile.getAbsolutePath();
+		int lastIndex=curTransSaveFilePath.lastIndexOf(".");
+		if(-1==lastIndex) {
+			lastIndex=curTransSaveFilePath.length();
+			curTransSaveFilePath=curTransSaveFilePath+".0";
+		}
+		
+		try {
+			if(null!=bufferedWriter) bufferedWriter.close();
+		} catch (Exception e) {
+			log.error("close target file stream occur error...",e);
+			throw new RuntimeException("close target file stream occur error...");
+		}
+		
+		File newTargetFile=new File(curTransSaveFilePath.substring(0,lastIndex+1)+(Integer.parseInt(curTransSaveFilePath.substring(lastIndex+1))+1));
+		try{
+			this.bufferedWriter=Files.newBufferedWriter((this.targetFile=newTargetFile).toPath(), StandardCharsets.UTF_8, StandardOpenOption.CREATE,StandardOpenOption.APPEND);
+		}catch(Exception e) {
+			log.error("create target file stream occur error...",e);
+			throw new RuntimeException("create target file stream occur error...");
+		}
+		
+		log.info("FlowSink switch flow: {} target file to: {}",getFlowName(),newTargetFile.getAbsolutePath());
 	}
 	
 	/**
@@ -121,12 +140,17 @@ public class FlowMapper {
 	 * @param line 数据记录行
 	 * @throws InterruptedException 
 	 */
-	public void writeChannel(String line) throws InterruptedException {
+	private void writeChannel(String line) throws InterruptedException {
 		if(null==targetFlow) {
 			log.error("targetFlow is NULL...");
 			throw new RuntimeException("targetFlow is NULL...");
 		}
 		targetFlow.transferToSourceChannel.put(line);
+	}
+	
+	public String getFlowName() {
+		if(null==targetFlow) return null;
+		return targetFlow.compName;
 	}
 	
 	/**

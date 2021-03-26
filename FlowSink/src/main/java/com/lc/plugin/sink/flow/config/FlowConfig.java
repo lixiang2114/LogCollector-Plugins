@@ -6,7 +6,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,8 +17,12 @@ import org.slf4j.LoggerFactory;
 import com.github.lixiang2114.flow.comps.Flow;
 import com.github.lixiang2114.flow.context.Context;
 import com.github.lixiang2114.flow.context.SizeUnit;
+import com.github.lixiang2114.flow.util.ClassLoaderUtil;
 import com.github.lixiang2114.flow.util.CommonUtil;
 import com.github.lixiang2114.flow.util.PropertiesReader;
+import com.lc.plugin.sink.flow.consts.RuleType;
+import com.lc.plugin.sink.flow.consts.SendMode;
+import com.lc.plugin.sink.flow.consts.TargetType;
 import com.lc.plugin.sink.flow.dto.FlowMapper;
 
 /**
@@ -38,7 +42,47 @@ public class FlowConfig {
 	private File sinkPath;
 	
 	/**
-	 * 消息转发模式
+	 * 入口类名
+	 */
+	public String mainClass;
+	
+	/**
+	 * 入口函数名
+	 */
+	public String mainMethod;
+	
+	/**
+	 * 按字段分发时的项键
+	 * index类型默认值为0
+	 * key类型默认值为flows
+	 */
+	public String itemKey;
+	
+	/**
+	 * 按字段分发时的规则类型
+	 * 默认为index类型
+	 */
+	public RuleType ruleType;
+	
+	/**
+	 * 按字段分发时项分隔符正则式
+	 * 默认为英文逗号
+	 */
+	public Pattern itemRegex;
+	
+	/**
+	 * 按字段分发时字段分隔符正则式
+	 * 默认值为英文叹号
+	 */
+	public Pattern fieldRegex;
+	
+	/**
+	 * 目标存储项目列表
+	 */
+	public String[] targetItems;
+	
+	/**
+	 * 转发目标模式
 	 */
 	public SendMode sendMode;
 	
@@ -53,6 +97,11 @@ public class FlowConfig {
 	public Long targetFileMaxSize;
 	
 	/**
+	 * 英文冒号正则式
+	 */
+	private static final Pattern EQUAL_REGEX=Pattern.compile("=");
+	
+	/**
 	 * 英文逗号正则式
 	 */
 	private static final Pattern COMMA_REGEX=Pattern.compile(",");
@@ -65,7 +114,7 @@ public class FlowConfig {
 	/**
 	 * 实时转存流程表
 	 */
-	public ArrayList<FlowMapper> targetFileList=new ArrayList<FlowMapper>();
+	public ArrayList<FlowMapper> targetFlowList=new ArrayList<FlowMapper>();
 	
 	/**
 	 * 容量正则式
@@ -97,36 +146,91 @@ public class FlowConfig {
 		log.info("target file max size is: "+targetFileMaxSize);
 		
 		//转发模式
-		String sendModeStr=getParamValue("sendMode","file").trim();
-		sendMode=sendModeStr.isEmpty()?SendMode.valueOf("file"):SendMode.valueOf(sendModeStr);
+		String sendModeStr=getParamValue("sendMode","rep").trim();
+		sendMode=sendModeStr.isEmpty()?SendMode.valueOf("rep"):SendMode.valueOf(sendModeStr);
+		
+		//目标项目列表
+		String[] typeAndItemStrArray=COMMA_REGEX.split(dispatcherItemStr);
+		this.targetItems=new String[typeAndItemStrArray.length];
 		
 		//转存文件列表
-		HashSet<FlowMapper> transferSaveFiles=new HashSet<FlowMapper>();
-		if(SendMode.file==sendMode) {
-			String[] targetFiles=COMMA_REGEX.split(dispatcherItemStr);
-			for(int i=0;i<targetFiles.length;i++) {
-				File file=new File(targetFiles[i].trim());
+		LinkedHashSet<FlowMapper> transferMapperSet=new LinkedHashSet<FlowMapper>();
+		for(int i=0;i<typeAndItemStrArray.length;i++) {
+			String typeAndItemStr=typeAndItemStrArray[i].trim();
+			if(typeAndItemStr.isEmpty()) continue;
+			
+			String[] typeAndItem=EQUAL_REGEX.split(typeAndItemStr);
+			if(0==typeAndItem.length) continue;
+			
+			String first=typeAndItem[0].trim();
+			String second=1<typeAndItem.length?typeAndItem[1].trim():"";
+			if(first.isEmpty() && second.isEmpty()) continue;
+			
+			String type=null;
+			String item=null;
+			if(first.isEmpty() || second.isEmpty()) {
+				type="buffer";
+				item=first.isEmpty()?second:first;
+			}else{
+				type=typeAndItem[0].trim();
+				item=typeAndItem[1].trim();
+			}
+			
+			this.targetItems[i]=item;
+			TargetType targetType=TargetType.valueOf(type);
+			if(TargetType.file==targetType) {
+				File file=new File(item);
 				if(file.exists() && file.isDirectory()) {
 					log.error("target file: {} can not be directory...",file.getAbsolutePath());
 					throw new RuntimeException("target file: "+file.getAbsolutePath()+" can not be directory...");
 				}
-				transferSaveFiles.add(new FlowMapper(file,SendMode.file));
-			}
-		}else{
-			String[] targetFlows=COMMA_REGEX.split(dispatcherItemStr);
-			for(String targetFlowName:targetFlows) {
-				String flowName=targetFlowName.trim();
-				Flow targetFlow=Context.getFlow(flowName);
+				transferMapperSet.add(new FlowMapper(file,this));
+			}else{
+				Flow targetFlow=Context.getFlow(item);
 				if(null==targetFlow) {
-					log.error("flow: {} is not exists",flowName);
-					throw new RuntimeException("flow: "+flowName+" is not exists");
+					log.error("flow: {} is not exists",item);
+					throw new RuntimeException("flow: "+item+" is not exists");
 				}
-				transferSaveFiles.add(new FlowMapper(targetFlow,sendMode));
+				transferMapperSet.add(new FlowMapper(targetFlow,targetType,this));
 			}
 		}
 		
-		this.targetFileList.addAll(transferSaveFiles);
-		log.info("target items are: "+transferSaveFiles);
+		this.targetFlowList.addAll(transferMapperSet);
+		log.info("target items are: "+transferMapperSet);
+		
+		if(SendMode.field==sendMode) {
+			String ruleStr=getParamValue("rule","index").trim();
+			String itemSeparator=getParamValue("itemSeparator","!").trim();
+			this.ruleType=RuleType.valueOf(ruleStr.isEmpty()?"index":ruleStr);
+			this.itemRegex=Pattern.compile(itemSeparator.isEmpty()?"!":itemSeparator);
+			if(RuleType.key==ruleType) { //key类型
+				this.itemKey=getParamValue(RuleType.key.typeName,"flows").trim();
+			}else{ //index类型
+				String fieldSeparator=getParamValue("fieldSeparator",",").trim();
+				this.itemKey=getParamValue(RuleType.index.typeName,"0").trim();
+				this.fieldRegex=Pattern.compile(fieldSeparator.isEmpty()?",":fieldSeparator);
+			}
+		}
+		
+		if(SendMode.custom==sendMode) {
+			File libPath=new File(sinkPath,"lib");
+			File binPath=new File(sinkPath,"bin");
+			File srcPath=new File(sinkPath,"script");
+			File appPath=new File(Context.projectFile,"lib");
+			
+			if(ClassLoaderUtil.compileJavaSource(srcPath,binPath,new File[]{appPath,libPath})) {
+				ClassLoaderUtil.addFileToCurrentClassPath(binPath);
+			}else{
+				log.error("compile script failure: {}",srcPath.getAbsolutePath());
+				throw new RuntimeException("compile script failure: "+srcPath.getAbsolutePath());
+			}
+			
+			String mainClassStr=getParamValue("mainClass","DefaultClass").trim();
+			this.mainClass=mainClassStr.isEmpty()?"DefaultClass":mainClassStr;
+			
+			String mainMethodStr=getParamValue("mainMethod","main").trim();
+			this.mainMethod=mainMethodStr.isEmpty()?"main":mainMethodStr;
+		}
 		
 		return this;
 	}
@@ -225,7 +329,7 @@ public class FlowConfig {
 		HashMap<String,Object> map=new HashMap<String,Object>();
 		map.put("sinkPath", sinkPath);
 		map.put("sendMode", sendMode);
-		map.put("targetFileList", targetFileList);
+		map.put("targetFlowList", targetFlowList);
 		map.put("targetFileMaxSize", targetFileMaxSize);
 		return map.toString();
 	}

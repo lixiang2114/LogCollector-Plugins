@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import com.github.lixiang2114.flow.comps.Channel;
 import com.github.lixiang2114.flow.plugins.adapter.SinkPluginAdapter;
 import com.lc.plugin.sink.flow.config.FlowConfig;
-import com.lc.plugin.sink.flow.config.SendMode;
+import com.lc.plugin.sink.flow.consts.SendMode;
 import com.lc.plugin.sink.flow.service.FlowService;
 
 /**
@@ -56,22 +56,54 @@ public class FlowSink extends SinkPluginAdapter{
 		}
 		
 		flow.sinkStart=true;
+		log.info("start flow sink process...");
+		SendMode sendMode=flowConfig.sendMode;
 		
 		try{
 			String message=null;
-			if(SendMode.channel==flowConfig.sendMode){
+			switch(sendMode) {
+			case rep:
 				while(flow.sinkStart) {
 					if(null==(message=filterToSinkChannel.get())) continue;
 					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.writeChannel(message)) return false;
+					if(!flowService.repPipeLine(message)) return false;
 				}
-			}else{
+				break;
+			case field:
 				while(flow.sinkStart) {
 					if(null==(message=filterToSinkChannel.get())) continue;
 					if((message=message.trim()).isEmpty()) continue;
-					if(!flowService.writeFileLine(message)) return false;
+					if(!flowService.fieldPipeLine(message)) return false;
 				}
-			}
+				break;
+			case hash:
+				while(flow.sinkStart) {
+					if(null==(message=filterToSinkChannel.get())) continue;
+					if((message=message.trim()).isEmpty()) continue;
+					if(!flowService.hashPipeLine(message)) return false;
+				}
+				break;
+			case robin:
+				while(flow.sinkStart) {
+					if(null==(message=filterToSinkChannel.get())) continue;
+					if((message=message.trim()).isEmpty()) continue;
+					if(!flowService.robinPipeLine(message)) return false;
+				}
+				break;
+			case random:
+				while(flow.sinkStart) {
+					if(null==(message=filterToSinkChannel.get())) continue;
+					if((message=message.trim()).isEmpty()) continue;
+					if(!flowService.randomPipeLine(message)) return false;
+				}
+				break;
+			default:
+				while(flow.sinkStart) {
+					if(null==(message=filterToSinkChannel.get())) continue;
+					if((message=message.trim()).isEmpty()) continue;
+					if(!flowService.customPipeLine(message)) return false;
+				}
+		}
 		}catch(Exception e){
 			log.warn("sink plugin is interrupted while waiting...");
 		}

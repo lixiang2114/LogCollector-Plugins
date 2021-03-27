@@ -25,8 +25,8 @@ unzip  /install/zip/flowSink.zip -d /software/LogCollector-2.0/plugins/
 |itemSeparator|项目分隔符|#|sendMode=field时，用于分隔目标项的分隔符|
 |fieldSeparator|字段分隔符|,|rule=index时，用于分隔记录中字段的分隔符|
 |mainClass|入口类名|DefaultClass|sendMode=custom时，用于定义动态脚本的入口类全名|
-|mainMethod|入口方法|main|sendMode=custom时，用于定义动态脚本的入口函数名|
-
+|mainMethod|入口方法|main|sendMode=custom时，用于定义动态脚本的入口函数名|  
+​      
 ##### 备注：  
 dispatcherItems参数值的格式为:  [targetType01:]item01,[targetType02:]item02...  
 其中targetType是可选的，缺省值为：buffer，可选targetType值有：file、buffer、channel

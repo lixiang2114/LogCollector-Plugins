@@ -1,6 +1,7 @@
 package com.lc.plugin.extend.filter;
 
 import java.io.File;
+import java.lang.reflect.Array;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,12 +64,22 @@ public class ExtendFilter extends FilterPluginAdapter{
 					if((message=message.trim()).isEmpty()) continue;
 					
 					Object result=DyScriptUtil.execFunc(mainClass, mainMethod, message);
-					
 					if(null==result) continue;
-					String outLine=result.toString().trim();
 					
-					if(outLine.isEmpty()) continue;
-					filterToSinkChannel.put(outLine);
+					if(!result.getClass().isArray()) {
+						String outLine=result.toString().trim();
+						if(!outLine.isEmpty()) filterToSinkChannel.put(outLine);
+						continue;
+					}
+					
+					int len=Array.getLength(result);
+					for(int i=0;i<len;i++) {
+						Object object=Array.get(result, i);
+						if(null==object) continue;
+						String outLine=object.toString().trim();
+						if(outLine.isEmpty()) continue;
+						filterToSinkChannel.put(outLine);
+					}
 				}
 			}
 		}catch(InterruptedException e){

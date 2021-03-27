@@ -98,23 +98,33 @@ public class FlowService {
 		
 		if(null==itemValues || itemValues.isEmpty()) {
 			log.error("field pipeLine process running error: flow name not found by field rule...");
-			throw new RuntimeException("flow name not found by field rule...");
+			return false;
 		}
 		
-		String[] items=flowConfig.itemRegex.split(itemValues);
 		String[] targetItems=flowConfig.targetItems;
-		int[] indexs=new int[items.length];
+		String[] items=flowConfig.itemRegex.split(itemValues);
+		ArrayList<Integer> indexList=new ArrayList<Integer>();
 		for(int i=0;i<items.length;i++) {
 			for(int j=0;j<flowNum;j++) {
 				if(items[i].equals(targetItems[j])) {
-					indexs[i]=j;
+					indexList.add(j);
 					break;
 				}
 			}
 		}
 		
+		int len=indexList.size();
+		if(0==len) {
+			log.error("flow sink field pipeLine process running error: indexList is Empty...");
+			return false;
+		}
+		
+		if(len<items.length) {
+			log.warn("flow sink field pipeLine process running error: indexList length is less than items length...");
+		}
+		
 		try {
-			for(int i=0;i<indexs.length;targetFlowList.get(indexs[i++]).writeMessage(message));
+			for(int i=0;i<len;targetFlowList.get(indexList.get(i++)).writeMessage(message));
 			return true;
 		} catch (Exception e) {
 			log.error("flow sink field pipeLine process running error...",e);

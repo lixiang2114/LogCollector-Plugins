@@ -90,8 +90,6 @@ public class HttpService {
 	 * @throws Exception
 	 */
 	public boolean post(String message) throws Exception {
-		if(message.isEmpty()) return true;
-		
 		RecvType sendType=httpConfig.sendType;
 		HttpHeaders httpHeaders=RestClient.getDefaultRequestHeader();
 		switch(sendType){
@@ -110,7 +108,7 @@ public class HttpService {
 		}
 		
 		LinkedMultiValueMap<String,Object> httpBody=null;
-		if(null!=httpConfig.messageField && 0!=httpConfig.messageField.length()) {
+		if(null!=httpConfig.messageField) {
 			httpBody=new LinkedMultiValueMap<String,Object>();
 			httpBody.add(httpConfig.messageField, message);
 		}

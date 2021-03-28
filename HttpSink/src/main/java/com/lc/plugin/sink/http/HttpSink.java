@@ -60,7 +60,8 @@ public class HttpSink extends SinkPluginAdapter{
 			String message=null;
 			while(flow.sinkStart) {
 				if(null==(message=filterToSinkChannel.get())) continue;
-				if(!httpService.post(message.trim())) return false;
+				if((message=message.trim()).isEmpty()) continue;
+				if(!httpService.post(message)) return false;
 			}
 		}catch(Exception e){
 			log.warn("sink plugin is interrupted while waiting...");

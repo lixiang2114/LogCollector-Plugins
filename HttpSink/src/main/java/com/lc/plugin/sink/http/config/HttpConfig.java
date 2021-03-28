@@ -69,11 +69,6 @@ public class HttpConfig {
 	private Properties config;
 	
 	/**
-	 * 批处理尺寸
-	 */
-	private Integer batchSize;
-	
-	/**
 	 * 协议发送类型
 	 */
 	public RecvType sendType;
@@ -126,73 +121,41 @@ public class HttpConfig {
 	 * @param config
 	 */
 	public HttpConfig config() {
-		String postURLStr=config.getProperty("postURL");
-		if(null==postURLStr) throw new RuntimeException("postURL can not be null!!!");
-		String postURLStrs=postURLStr.trim();
-		if(0==postURLStrs.length()) throw new RuntimeException("postURL can not be empty!!!");
-		postURL=postURLStrs;
-		
-		String batchStr=config.getProperty("batchSize");
-		if(null!=batchStr) {
-			String batchs=batchStr.trim();
-			if(0!=batchs.length()) batchSize=Integer.parseInt(batchs);
-		}
-		
-		String maxRetryTimesStr=config.getProperty("maxRetryTimes");
-		if(null==maxRetryTimesStr) {
-			maxRetryTimes=3;
+		String postURLStr=config.getProperty("postURL","").trim();
+		if(postURLStr.isEmpty()) {
+			log.error("postURL can not be empty!!!");
+			throw new RuntimeException("postURL can not be empty!!!");
 		}else{
-			String maxRetryTimess=maxRetryTimesStr.trim();
-			maxRetryTimes=0==maxRetryTimess.length()?3:Integer.parseInt(maxRetryTimess);
+			this.postURL=postURLStr;
 		}
 		
-		String failMaxWaitMillStr=config.getProperty("failMaxWaitMills");
-		if(null==failMaxWaitMillStr) {
-			failMaxWaitMills=2000L;
-		}else{
-			String failMaxWaitMillss=failMaxWaitMillStr.trim();
-			failMaxWaitMills=0==failMaxWaitMillss.length()?2000L:Long.parseLong(failMaxWaitMillss);
-		}
+		String maxRetryTimesStr=config.getProperty("maxRetryTimes","").trim();
+		this.maxRetryTimes=maxRetryTimesStr.isEmpty()?3:Integer.parseInt(maxRetryTimesStr);
 		
-		String loginURLStr=config.getProperty("loginURL");
-		if(null!=loginURLStr) {
-			String loginURLStrs=loginURLStr.trim();
-			if(0!=loginURLStrs.length()) loginURL=loginURLStrs;
-		}
+		String failMaxWaitMillStr=config.getProperty("failMaxWaitMills","").trim();
+		this.failMaxWaitMills=failMaxWaitMillStr.isEmpty()?2000L:Long.parseLong(failMaxWaitMillStr);
 		
-		String userFieldStr=config.getProperty("userField");
-		if(null!=userFieldStr) {
-			String userFieldStrs=userFieldStr.trim();
-			if(0!=userFieldStrs.length()) userField=userFieldStrs;
-		}
+		String loginURLStr=config.getProperty("loginURL","").trim();
+		this.loginURL=loginURLStr.isEmpty()?null:loginURLStr;
 		
-		String passFieldStr=config.getProperty("passField");
-		if(null!=passFieldStr) {
-			String passFieldStrs=passFieldStr.trim();
-			if(0!=passFieldStrs.length()) passField=passFieldStrs;
-		}
+		String userFieldStr=config.getProperty("userField","").trim();
+		this.userField=userFieldStr.isEmpty()?null:userFieldStr;
 		
-		String authorModeStr=config.getProperty("authorMode");
-		if(null==authorModeStr) {
-			authorMode="query";
-		}else{
-			String authorModes=authorModeStr.trim();
-			authorMode=0==authorModes.length()?"query":authorModes;
-		}
+		String passFieldStr=config.getProperty("passField","").trim();
+		this.passField=passFieldStr.isEmpty()?null:passFieldStr;
 		
-		String userNameStr=config.getProperty("userName");
-		if(null!=userNameStr) {
-			String userNames=userNameStr.trim();
-			if(0!=userNames.length()) userName=userNames;
-		}
+		String authorModeStr=config.getProperty("authorMode","").trim();
+		this.authorMode=authorModeStr.isEmpty()?"query":authorModeStr;
 		
-		String passWordStr=config.getProperty("passWord");
-		if(null!=passWordStr) {
-			String passWords=passWordStr.trim();
-			if(0!=passWords.length()) passWord=passWords;
-		}
+		String userNameStr=config.getProperty("userName","").trim();
+		this.userName=userNameStr.isEmpty()?null:userNameStr;
 		
-		requireLogin=Boolean.parseBoolean(config.getProperty("requireLogin","true").trim());
+		String passWordStr=config.getProperty("passWord","").trim();
+		this.passWord=passWordStr.isEmpty()?null:passWordStr;
+		
+		String requireLoginStr=config.getProperty("requireLogin","").trim();
+		this.requireLogin=requireLoginStr.isEmpty()?true:Boolean.parseBoolean(requireLoginStr);
+		
 		if(requireLogin) {
 			if(null==loginURL) {
 				log.error("loginURL must be exists when requireLogin is true...");
@@ -204,7 +167,7 @@ public class HttpConfig {
 				throw new RuntimeException("userName and passWord must be exists when requireLogin is true...");
 			}
 			
-			if("query".equalsIgnoreCase(authorMode)) {
+			if("query".equals(authorMode)) {
 				if(null==userField || null==passField) {
 					log.error("userField and passField must be exists when authorMode is query...");
 					throw new RuntimeException("userField and passField must be exists when authorMode is query...");
@@ -212,12 +175,11 @@ public class HttpConfig {
 			}
 		}
 		
-		sendType=RecvType.valueOf(config.getProperty("sendType","StreamBody").trim());
-		String messageFieldStr=config.getProperty("messageField");
-		if(null!=messageFieldStr) {
-			String messageFields=messageFieldStr.trim();
-			if(0!=messageFields.length()) messageField=messageFields;
-		}
+		String sendTypeStr=config.getProperty("sendType","").trim();
+		this.sendType=sendTypeStr.isEmpty()?RecvType.StreamBody:RecvType.valueOf(sendTypeStr);
+		
+		String messageFieldStr=config.getProperty("messageField","").trim();
+		this.messageField=messageFieldStr.isEmpty()?null:messageFieldStr;
 		
 		return this;
 	}
@@ -298,7 +260,6 @@ public class HttpConfig {
 		map.put("loginURL", loginURL);
 		map.put("passField", passField);
 		map.put("sendType", sendType);
-		map.put("batchSize", batchSize);
 		map.put("passWord", passWord);
 		map.put("userName", userName);
 		map.put("authorMode", authorMode);

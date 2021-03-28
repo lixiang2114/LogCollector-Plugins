@@ -30,4 +30,4 @@ unzip  /install/zip/httpTransfer.zip -d /software/LogCollector-2.0/plugins/
 |transferSaveFile|转存缓冲文件|buffer.log.0|用于转存实时消息记录的缓冲文件名|
 |transferSaveMaxSize|转存文件尺寸|2GB|转存实时消息记录的缓冲文件最大尺寸|
 ##### 备注：  
-transferSaveFile参数的默认值buffer.log.0所在路径是系统安装目录下flows子目录中对应流程实例目录下的share子目录，缓冲数据文件仅按尺寸实现滚动记录，当尺寸超过设定的阈值将按数字递增序列创建新的缓冲数据文件流，从而完成文件切换操作。
+认证模式authorMode参数值为auto指的是首先基于查询参数认证，当查询参数认证未通过时自动启用BASE认证，若BASE认证也未通过则认为客户端登录失败；transferSaveFile参数的默认值buffer.log.0所在路径是系统安装目录下flows子目录中对应流程实例目录下的share子目录；缓冲数据文件仅按尺寸实现滚动记录，当尺寸超过设定的阈值将按数字递增序列创建新的缓冲数据文件流，从而完成文件切换操作。

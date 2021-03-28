@@ -66,7 +66,7 @@ public class AuthorService {
 	 */
 	public Boolean baseAuthor(HttpServletRequest request,HttpServletResponse response) {
 		String authorization=request.getHeader(HttpHeaderNames.AUTHORIZATION.toString());
-		if(null==authorization || 0==authorization.trim().length()){
+		if(null==authorization || authorization.trim().isEmpty()){
 			response.setHeader(HttpHeaderNames.WWW_AUTHENTICATE.toString(), BASE_REALM);
 			response.setStatus(HttpResponseStatus.UNAUTHORIZED);
 			return null;

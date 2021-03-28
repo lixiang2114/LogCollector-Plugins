@@ -112,26 +112,34 @@ public class FileConfig {
 		loggerConfig=PropertiesReader.getProperties(configFile);
 		
 		//应用方日志文件
-		appLogFile=loggerConfig.getProperty("appLogFile");
-		
-		//默认实时缓冲日志文件
-		File bufferLogFile=new File(transferPath,"buffer.log.0");
-		
-		//转存日志文件
-		String transferSaveFileName=loggerConfig.getProperty("transferSaveFile");
-		if(null==transferSaveFileName || 0==transferSaveFileName.trim().length()) {
-			transferSaveFile=bufferLogFile;
-			log.warn("not found parameter: 'transferSaveFile',will be use default...");
+		String appLogFileStr=loggerConfig.getProperty("appLogFile","").trim();
+		if(appLogFileStr.isEmpty()) {
+			log.error("appLogFile can not be NULL...");
+			throw new RuntimeException("appLogFile can not be NULL...");
 		}else{
-			File file=new File(transferSaveFileName.trim());
-			if(file.exists() && file.isFile()) transferSaveFile=file;
+			this.appLogFile=appLogFileStr;
 		}
 		
-		log.info("transfer save logger file is: "+transferSaveFile.getAbsolutePath());
+		//转存日志文件
+		String transferSaveFileName=loggerConfig.getProperty("transferSaveFile","").trim();
+		if(transferSaveFileName.isEmpty()) {
+			transferSaveFile=new File(transferPath,"buffer.log.0");
+			log.warn("not found parameter: 'transferSaveFile',will be use default...");
+		}else{
+			File file=new File(transferSaveFileName);
+			if(!file.exists() || file.isFile()) transferSaveFile=file;
+		}
+		
+		if(null==transferSaveFile) {
+			log.error("transferSaveFile can not be NULL...");
+			throw new RuntimeException("transferSaveFile can not be NULL...");
+		}
+		
+		log.info("transfer save file is: "+transferSaveFile.getAbsolutePath());
 		
 		//转存日志文件最大尺寸
 		transferSaveMaxSize=getTransferSaveMaxSize();
-		log.info("transfer save logger file max size is: "+transferSaveMaxSize);
+		log.info("transfer save file max size is: "+transferSaveMaxSize);
 		
 		return this;
 	}
@@ -140,9 +148,9 @@ public class FileConfig {
 	 * 获取转存日志文件最大尺寸(默认为2GB)
 	 */
 	private Long getTransferSaveMaxSize(){
-		String configMaxVal=loggerConfig.getProperty("transferSaveMaxSize");
-		if(null==configMaxVal || 0==configMaxVal.trim().length()) return 2*1024*1024*1024L;
-		Matcher matcher=CAP_REGEX.matcher(configMaxVal.trim());
+		String configMaxVal=loggerConfig.getProperty("transferSaveMaxSize","").trim();
+		if(configMaxVal.isEmpty()) return 2*1024*1024*1024L;
+		Matcher matcher=CAP_REGEX.matcher(configMaxVal);
 		if(!matcher.find()) return 2*1024*1024*1024L;
 		return SizeUnit.getBytes(Long.parseLong(matcher.group(1)), matcher.group(2).substring(0,1));
 	}

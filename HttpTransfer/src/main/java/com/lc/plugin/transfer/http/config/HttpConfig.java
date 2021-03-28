@@ -72,11 +72,6 @@ public class HttpConfig {
 	private Properties config;
 	
 	/**
-	 * 批处理尺寸
-	 */
-	private Integer batchSize;
-	
-	/**
 	 * 协议接收类型
 	 */
 	public RecvType recvType;
@@ -149,52 +144,31 @@ public class HttpConfig {
 	 * @param config
 	 */
 	public HttpConfig config() {
-		String batchStr=config.getProperty("batchSize");
-		if(null!=batchStr) {
-			String batchs=batchStr.trim();
-			if(0!=batchs.length()) batchSize=Integer.parseInt(batchs);
-		}
+		String userFieldStr=config.getProperty("userField","").trim();
+		this.userField=userFieldStr.isEmpty()?null:userFieldStr;
 		
-		String userFieldStr=config.getProperty("userField");
-		if(null!=userFieldStr) {
-			String userFieldStrs=userFieldStr.trim();
-			if(0!=userFieldStrs.length()) userField=userFieldStrs;
-		}
+		String passFieldStr=config.getProperty("passField","").trim();
+		this.passField=passFieldStr.isEmpty()?null:passFieldStr;
 		
-		String passFieldStr=config.getProperty("passField");
-		if(null!=passFieldStr) {
-			String passFieldStrs=passFieldStr.trim();
-			if(0!=passFieldStrs.length()) passField=passFieldStrs;
-		}
+		String passWordStr=config.getProperty("passWord","").trim();
+		this.passWord=passWordStr.isEmpty()?null:passWordStr;
 		
-		String authorModeStr=config.getProperty("authorMode");
-		if(null==authorModeStr) {
-			authorMode="auto";
-		}else{
-			String authorModes=authorModeStr.trim();
-			authorMode=0==authorModes.length()?"auto":authorModes;
-		}
+		String userNameStr=config.getProperty("userName","").trim();
+		this.userName=userNameStr.isEmpty()?null:userNameStr;
 		
-		String userNameStr=config.getProperty("userName");
-		if(null!=userNameStr) {
-			String userNames=userNameStr.trim();
-			if(0!=userNames.length()) userName=userNames;
-		}
+		String authorModeStr=config.getProperty("authorMode","").trim();
+		this.authorMode=authorModeStr.isEmpty()?"auto":authorModeStr;
 		
-		String passWordStr=config.getProperty("passWord");
-		if(null!=passWordStr) {
-			String passWords=passWordStr.trim();
-			if(0!=passWords.length()) passWord=passWords;
-		}
+		String requireLoginStr=config.getProperty("requireLogin","").trim();
+		this.requireLogin=requireLoginStr.isEmpty()?true:Boolean.parseBoolean(requireLoginStr);
 		
-		requireLogin=Boolean.parseBoolean(config.getProperty("requireLogin","true").trim());
 		if(requireLogin) {
-			if(null==userName || null==userName) {
+			if(null==userName || null==passWord) {
 				log.error("userName and passWord must be exists when requireLogin is true...");
 				throw new RuntimeException("userName and passWord must be exists when requireLogin is true...");
 			}
 			
-			if("auto".equalsIgnoreCase(authorMode) || "query".equalsIgnoreCase(authorMode)) {
+			if("auto".equals(authorMode) || "query".equals(authorMode)) {
 				if(null==userField || null==passField) {
 					log.error("userField and passField must be exists when authorMode is auto or query...");
 					throw new RuntimeException("userField and passField must be exists when authorMode is auto or query...");
@@ -202,32 +176,45 @@ public class HttpConfig {
 			}
 		}
 		
-		//默认实时缓冲日志文件
-		File bufferLogFile=new File(transferPath,"buffer.log.0");
-		
 		//转存日志文件
-		String transferSaveFileName=config.getProperty("transferSaveFile");
-		if(null==transferSaveFileName || 0==transferSaveFileName.trim().length()) {
-			transferSaveFile=bufferLogFile;
+		String transferSaveFileName=config.getProperty("transferSaveFile","").trim();
+		if(transferSaveFileName.isEmpty()) {
+			this.transferSaveFile=new File(transferPath,"buffer.log.0");
 			log.warn("not found parameter: 'transferSaveFile',will be use default...");
 		}else{
-			File file=new File(transferSaveFileName.trim());
-			if(file.exists() && file.isFile()) transferSaveFile=file;
+			File file=new File(transferSaveFileName);
+			if(!file.exists() || file.isFile()) transferSaveFile=file;
 		}
 		
-		log.info("transfer save logger file is: "+transferSaveFile.getAbsolutePath());
+		if(null==transferSaveFile) {
+			log.error("transferSaveFile can not be NULL...");
+			throw new RuntimeException("transferSaveFile can not be NULL...");
+		}
+		
+		log.info("transfer save file is: "+transferSaveFile.getAbsolutePath());
 		
 		//转存日志文件最大尺寸
 		transferSaveMaxSize=getTransferSaveMaxSize();
-		log.info("transfer save logger file max size is: "+transferSaveMaxSize);
+		log.info("transfer save file max size is: "+transferSaveMaxSize);
 		
 		//常规参数
-		recvType=RecvType.valueOf(config.getProperty("recvType","MessageBody").trim());
-		loginSuccessId=config.getProperty("loginSuccessId","OK").trim();
-		loginFailureId=config.getProperty("loginFailureId","NO").trim();
-		port=Integer.parseInt(config.getProperty("port","8080").trim());
-		normalReply=config.getProperty("normalReply","OK").trim();
-		errorReply=config.getProperty("errorReply","NO").trim();
+		String recvTypeStr=config.getProperty("recvType","").trim();
+		this.recvType=recvTypeStr.isEmpty()?RecvType.MessageBody:RecvType.valueOf(recvTypeStr);
+		
+		String loginSuccessIdStr=config.getProperty("loginSuccessId","").trim();
+		this.loginSuccessId=loginSuccessIdStr.isEmpty()?"OK":loginSuccessIdStr;
+		
+		String loginFailureIdStr=config.getProperty("loginFailureId","").trim();
+		this.loginFailureId=loginFailureIdStr.isEmpty()?"NO":loginFailureIdStr;
+		
+		String normalReplyStr=config.getProperty("normalReply","").trim();
+		this.normalReply=normalReplyStr.isEmpty()?"OK":normalReplyStr;
+		
+		String errorReplyStr=config.getProperty("errorReply","").trim();
+		this.errorReply=errorReplyStr.isEmpty()?"NO":errorReplyStr;
+		
+		String portStr=config.getProperty("port","").trim();
+		this.port=portStr.isEmpty()?8080:Integer.parseInt(portStr);
 		
 		return this;
 	}
@@ -236,9 +223,9 @@ public class HttpConfig {
 	 * 获取转存日志文件最大尺寸(默认为2GB)
 	 */
 	private Long getTransferSaveMaxSize(){
-		String configMaxVal=config.getProperty("transferSaveMaxSize");
-		if(null==configMaxVal || 0==configMaxVal.trim().length()) return 2*1024*1024*1024L;
-		Matcher matcher=CAP_REGEX.matcher(configMaxVal.trim());
+		String configMaxVal=config.getProperty("transferSaveMaxSize","").trim();
+		if(configMaxVal.isEmpty()) return 2*1024*1024*1024L;
+		Matcher matcher=CAP_REGEX.matcher(configMaxVal);
 		if(!matcher.find()) return 2*1024*1024*1024L;
 		return SizeUnit.getBytes(Long.parseLong(matcher.group(1)), matcher.group(2).substring(0,1));
 	}
@@ -318,7 +305,6 @@ public class HttpConfig {
 		map.put("recvType", recvType);
 		map.put("userField", userField);
 		map.put("passField", passField);
-		map.put("batchSize", batchSize);
 		map.put("passWord", passWord);
 		map.put("userName", userName);
 		map.put("transferPath", transferPath);

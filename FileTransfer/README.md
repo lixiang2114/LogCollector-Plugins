@@ -19,4 +19,4 @@ unzip  /install/zip/fileTransfer.zip -d /software/LogCollector-2.0/plugins/
 |transferSaveMaxSize|转存尺寸|2GB|转存目标文件最大阈值尺寸|
 |transferSaveFile|转存文件|buffer.log.0|转存的目标文件，超过阈值尺寸则按数字递增滚动|
 ##### 备注：  
-目标数据文件仅按尺寸实现滚动记录，当尺寸超过设定的阈值将按数字递增序列创建新的目标数据文件流，从而完成文件切换操作。
+transferSaveFile参数的默认值buffer.log.0所在路径是系统安装目录下flows子目录中对应流程实例目录下的share子目录，目标数据文件仅按尺寸实现滚动记录，当尺寸超过设定的阈值将按数字递增序列创建新的目标数据文件流，从而完成文件切换操作。

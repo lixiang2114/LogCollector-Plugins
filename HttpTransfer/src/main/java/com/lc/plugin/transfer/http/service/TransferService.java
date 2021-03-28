@@ -3,7 +3,6 @@ package com.lc.plugin.transfer.http.service;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 
@@ -47,7 +46,7 @@ public class TransferService extends HttpAction {
 	public void init() throws IOException {
 		this.httpConfig=(HttpConfig)serverConfig.servletConfig;
 		this.authorService = new AuthorService(httpConfig);
-		this.fileWriter=new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(httpConfig.transferSaveFile.toPath(), StandardOpenOption.APPEND)));
+		this.fileWriter=Files.newBufferedWriter(httpConfig.transferSaveFile.toPath(),StandardOpenOption.CREATE,StandardOpenOption.APPEND);
 	}
 
 	/**
@@ -145,11 +144,16 @@ public class TransferService extends HttpAction {
 			//当前转存日志文件达到最大值则增加转存日志文件
 			String curTransSaveFilePath=httpConfig.transferSaveFile.getAbsolutePath();
 			int lastIndex=curTransSaveFilePath.lastIndexOf(".");
+			if(-1==lastIndex) {
+				lastIndex=curTransSaveFilePath.length();
+				curTransSaveFilePath=curTransSaveFilePath+".0";
+			}
+			
 			httpConfig.transferSaveFile=new File(curTransSaveFilePath.substring(0,lastIndex+1)+(Integer.parseInt(curTransSaveFilePath.substring(lastIndex+1))+1));
 			fileWriter.close();
 			
 			log.info("HttpTransfer switch transfer save log file to: "+httpConfig.transferSaveFile.getAbsolutePath());
-			fileWriter=new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(httpConfig.transferSaveFile.toPath(), StandardOpenOption.APPEND)));
+			fileWriter=Files.newBufferedWriter(httpConfig.transferSaveFile.toPath(),StandardOpenOption.CREATE,StandardOpenOption.APPEND);
 		} catch (Exception e) {
 			returnData=httpConfig.errorReply;
 			log.error("transfer save process running error...",e);

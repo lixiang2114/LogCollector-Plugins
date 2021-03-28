@@ -2,11 +2,11 @@ package com.lc.plugin.transfer.file.service;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
-import java.io.OutputStreamWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +77,7 @@ public class FileService {
 			lnr=new LineNumberReader(new InputStreamReader(tailfSubProcess.getInputStream()));
 			
 			out:while(fileConfig.flow.transferStart){
-				bw=new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileConfig.transferSaveFile,true)));
+				bw=Files.newBufferedWriter(fileConfig.transferSaveFile.toPath(), StandardOpenOption.CREATE,StandardOpenOption.APPEND);
 				while(fileConfig.flow.transferStart){
 					if(null==(line=lnr.readLine())){
 						try{

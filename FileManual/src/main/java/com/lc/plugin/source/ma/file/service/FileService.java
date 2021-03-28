@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import com.github.lixiang2114.flow.comps.Channel;
-import com.github.lixiang2114.flow.thread.SpringThreadPool;
+import com.github.lixiang2114.flow.scheduler.SchedulerPool;
 import com.lc.plugin.source.ma.file.config.FileConfig;
 import com.lc.plugin.source.ma.file.config.ScanType;
 import com.lc.plugin.source.ma.file.handler.FileHandler;
@@ -18,7 +18,6 @@ import com.lc.plugin.source.ma.file.handler.FileHandler;
  * @author Lixiang
  * @description 日志文件服务
  */
-@SuppressWarnings("unchecked")
 public class FileService {
 	/**
 	 * File配置
@@ -82,7 +81,7 @@ public class FileService {
 			
 			if(fileConfig.multiThread) { //异步并发递归扫描每个文件
 				log.info("async hand multi file...");
-				ThreadPoolTaskExecutor threadPool=SpringThreadPool.getSpringThreadPool(ThreadPoolTaskExecutor.class);
+				ThreadPoolTaskExecutor threadPool=SchedulerPool.getTaskExecutor();
 				if(null==threadPool) {
 					log.error("multiThread is true and unable to get spring thread pool...");
 					throw new RuntimeException("multiThread is true and unable to get spring thread pool...");

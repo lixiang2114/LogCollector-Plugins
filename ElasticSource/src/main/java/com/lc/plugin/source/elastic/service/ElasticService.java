@@ -57,7 +57,7 @@ public class ElasticService {
 				len=(docList=elasticUtil.pull(indexName, queryParamDict)).size();
 				for(int i=0;i<len;i++,counter++) {
 					HashMap<String,Object> docMeta=docList.get(i);
-					if(null==docMeta || 0==docMeta.size()) continue;
+					if(null==docMeta || docMeta.isEmpty()) continue;
 					HashMap<String,Object> doc=(HashMap<String,Object>)docMeta.get("_source");
 					
 					for(String timeField:elasticConfig.timeFieldSet) {
@@ -107,15 +107,14 @@ public class ElasticService {
 			}
 			
 			log.info("ElasticSource plugin etl process normal exit,execute checkpoint...");
-			elasticConfig.refreshCheckPoint();
 		}catch(Exception e){
+			log.info("ElasticSource plugin etl process occur Error...",e);
+		}finally{
 			try {
 				elasticConfig.refreshCheckPoint();
 			} catch (IOException e1) {
 				log.info("ElasticSource call refreshCheckPoint occur Error...",e1);
 			}
-			log.info("ElasticSource plugin etl process occur Error...",e);
-		}finally{
 			elasticConfig.restClient.close();
 		}
 		return true;

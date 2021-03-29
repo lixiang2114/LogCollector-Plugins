@@ -24,4 +24,4 @@ unzip  /install/zip/mongoSource.zip -d /software/LogCollector-2.0/plugins/
 |dataBaseName|数据库|无|扫描的MongoDB数据库名称，对Source插件而言，本参数是必选参数|
 |collectionName|数据表|无|扫描的MongoDB数据表名称，对Source插件而言，本参数是必选参数|
 ##### 备注：  
-hostList参数值的多个项之间可以使用英文逗号分隔，另外本插件还支持很多相关MongoDB的连接参数项，这些参数项的名称与MongoDB官方参数名相同，有兴趣者可以自行测试之。  
+hostList参数值的多个项之间可以使用英文逗号分隔，若无法识别outFormat参数值时默认使用的输出格式为值序列格式。另外本插件还支持很多相关MongoDB的连接参数项，这些参数项的名称与MongoDB官方参数名相同，有兴趣者可以自行测试之。  

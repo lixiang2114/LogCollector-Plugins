@@ -42,7 +42,7 @@ public class ElasticSource extends ManualPluginAdapter {
 		}
 		
 		this.elasticConfig=new ElasticConfig(flow).config();
-		elasticService=new ElasticService(elasticConfig);
+		this.elasticService=new ElasticService(elasticConfig);
 		
 		return true;
 	}

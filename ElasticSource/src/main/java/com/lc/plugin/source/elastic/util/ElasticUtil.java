@@ -131,11 +131,11 @@ public class ElasticUtil {
 	 * @return 响应对象
 	 */
 	private Response executeRequest(String uri,String method,Map<String,String> queryString,Object msgBody,Header... headers) {
-		if(null==uri || 0==uri.trim().length()) return null;
-		if(null==method || 0==method.trim().length()) method="POST";
+		if(null==uri || uri.trim().isEmpty()) return null;
+		if(null==method || method.trim().isEmpty()) method="POST";
 		
 		Request request=new Request(method,uri);
-		if(null!=queryString && 0!=queryString.size()) request.addParameters(queryString);
+		if(null!=queryString && !queryString.isEmpty()) request.addParameters(queryString);
 		if(null!=headers && 0!=headers.length) addHeader(request,headers);
 		if(null!=msgBody) request.setEntity(new StringEntity(CommonUtil.javaToJsonStr(msgBody),ContentType.APPLICATION_JSON));
 		

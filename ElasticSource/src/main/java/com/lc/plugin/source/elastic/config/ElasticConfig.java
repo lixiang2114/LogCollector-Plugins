@@ -163,38 +163,37 @@ public class ElasticConfig {
 	 * @param config
 	 */
 	public ElasticConfig config() {
-		String indexNameStr=config.getProperty("indexName");
-		if(isEmpty(indexNameStr)) throw new RuntimeException("No Index Name Specified...");
-		indexName="/"+indexNameStr.trim().toLowerCase();
+		String indexNameStr=config.getProperty("indexName","").trim();
+		if(indexNameStr.isEmpty()) throw new RuntimeException("No Index Name Specified...");
+		
+		this.indexName="/"+indexNameStr.toLowerCase();
 		
 		initHostAddress();
 		initSelectSqlParameter();
 		
-		String timeZoneStr=config.getProperty("timeZone");
-		timeZone=null==timeZoneStr?"+0800":timeZoneStr.trim();
+		String timeZoneStr=config.getProperty("timeZone","").trim();
+		this.timeZone=timeZoneStr.isEmpty()?"+0800":timeZoneStr;
 		
-		outFormat=getParamValue("outFormat", "qstr");
-		realtime=Boolean.parseBoolean(getParamValue("realtime", "true"));
+		String outFormatStr=config.getProperty("outFormat","").trim();
+		this.outFormat=outFormatStr.isEmpty()?"qstr":outFormatStr;
 		
-		String clusterNameStr=config.getProperty("clusterName");
-		clusterName=isEmpty(clusterNameStr)?null:clusterNameStr.trim();
+		String realtimeStr=config.getProperty("realtime","").trim();
+		this.realtime=realtimeStr.isEmpty()?true:Boolean.parseBoolean(realtimeStr);
 		
-		String enableAuthCacheStr=config.getProperty("enableAuthCache");
-		if(!isEmpty(clusterNameStr)) enableAuthCache=Boolean.parseBoolean(enableAuthCacheStr.trim());
+		String clusterNameStr=config.getProperty("clusterName","").trim();
+		this.clusterName=clusterNameStr.isEmpty()?null:clusterNameStr;
 		
-		String timeFieldStr=config.getProperty("timeFields");
-		if(isEmpty(timeFieldStr)) {
-			timeFieldSet=new HashSet<String>();
-		}else{
-			String[] timeFieldArr=COMMA_REGEX.split(timeFieldStr.trim());
-			timeFieldSet=Arrays.stream(timeFieldArr).map(e->e.trim()).collect(Collectors.toSet());
-		}
+		String enableAuthCacheStr=config.getProperty("enableAuthCache","").trim();
+		if(!enableAuthCacheStr.isEmpty()) enableAuthCache=Boolean.parseBoolean(enableAuthCacheStr);
 		
-		String passWordStr=config.getProperty("passWord");
-		String userNameStr=config.getProperty("userName");
-		if(!isEmpty(passWordStr) && !isEmpty(userNameStr)) {
-			userName=userNameStr.trim();
-			passWord=passWordStr.trim();
+		String timeFieldStr=config.getProperty("timeFields","").trim();
+		this.timeFieldSet=timeFieldStr.isEmpty()?new HashSet<String>():Arrays.stream(COMMA_REGEX.split(timeFieldStr)).map(e->e.trim()).collect(Collectors.toSet());
+		
+		String passWordStr=config.getProperty("passWord","").trim();
+		String userNameStr=config.getProperty("userName","").trim();
+		if(!passWordStr.isEmpty() && !userNameStr.isEmpty()) {
+			userName=userNameStr;
+			passWord=passWordStr;
 		}
 		
 		RestClientBuilder builder=RestClient.builder(hostList);
@@ -221,7 +220,8 @@ public class ElasticConfig {
 	 * 初始化查询SQL参数
 	 */
 	private void initSelectSqlParameter() {
-		String selectSQL=getParamValue("selectSQL","{\"query\":{\"match_all\":{}},\"from\":0,\"size\":100}");
+		String selectSQLStr=config.getProperty("selectSQL", "").trim();
+		String selectSQL=selectSQLStr.isEmpty()?"{\"query\":{\"match_all\":{}},\"from\":0,\"size\":100}":selectSQLStr;
 		if(!selectSQL.startsWith("{") || !selectSQL.endsWith("}")) {
 			log.error("elastic sql must be dictionary json format: {....}");
 			throw new RuntimeException("elastic sql must be dictionary json format: {....}");
@@ -245,11 +245,12 @@ public class ElasticConfig {
 	 * 初始化主机地址列表
 	 */
 	private void initHostAddress(){
-		String[] hosts=COMMA_REGEX.split(getParamValue("hostList", "127.0.0.1:9200"));
+		String hostListStr=config.getProperty("hostList", "").trim();
+		String[] hosts=hostListStr.isEmpty()?new String[]{"127.0.0.1:9200"}:COMMA_REGEX.split(hostListStr);
 		hostList=new HttpHost[hosts.length];
 		for(int i=0;i<hosts.length;i++){
 			String host=hosts[i].trim();
-			if(0==host.length()) continue;
+			if(host.isEmpty()) continue;
 			String[] ipAndPort=COLON_REGEX.split(host);
 			if(ipAndPort.length>=2){
 				String ip=ipAndPort[0].trim();
@@ -269,28 +270,6 @@ public class ElasticConfig {
 				hostList[i]=new HttpHost(unknow, 9200, "http");
 			}
 		}
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private String getParamValue(String key,String defaultValue){
-		String value=config.getProperty(key, defaultValue).trim();
-		return value.length()==0?defaultValue:value;
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private static final boolean isEmpty(String value) {
-		if(null==value) return true;
-		return 0==value.trim().length();
 	}
 	
 	/**

@@ -168,11 +168,6 @@ public class MdbConfig {
 	private static final Pattern COMMA_REGEX=Pattern.compile(",");
 	
 	/**
-	 * 时区正则式
-	 */
-	private static final Pattern TIMEZONE_REGEX=Pattern.compile("\\+|-");
-	
-	/**
      * 数字正则式
      */
 	private static final Pattern NUMBER_REGEX=Pattern.compile("^[0-9]+$");
@@ -199,68 +194,60 @@ public class MdbConfig {
 	 * @param config
 	 */
 	public MdbConfig config() {
-		String defaultDBStr=config.getProperty("defaultDB");
-		defaultDB=isEmpty(defaultDBStr)?null:defaultDBStr.trim();
+		String defaultDBStr=config.getProperty("defaultDB","").trim();
+		this.defaultDB=defaultDBStr.isEmpty()?null:defaultDBStr;
 		
-		String defaultTabStr=config.getProperty("defaultTab");
-		defaultTab=isEmpty(defaultTabStr)?null:defaultTabStr.trim();
+		String defaultTabStr=config.getProperty("defaultTab","").trim();
+		this.defaultTab=defaultTabStr.isEmpty()?null:defaultTabStr;
 		
-		String dbFieldStr=config.getProperty("dbField");
-		dbField=isEmpty(dbFieldStr)?null:dbFieldStr.trim();
+		String dbFieldStr=config.getProperty("dbField","").trim();
+		this.dbField=dbFieldStr.isEmpty()?null:dbFieldStr;
 		
-		String tabFieldStr=config.getProperty("tabField");
-		tabField=isEmpty(tabFieldStr)?null:tabFieldStr.trim();
+		String tabFieldStr=config.getProperty("tabField","").trim();
+		this.tabField=tabFieldStr.isEmpty()?null:tabFieldStr;
 		
-		String timeZoneStr=config.getProperty("timeZone");
-		if(isEmpty(timeZoneStr)) {
-			timeZoneMillis=8*3600*1000;
-		}else{
-			timeZoneMillis=Integer.parseInt(timeZoneStr.trim())*36000;
-		}
+		String timeZoneStr=config.getProperty("timeZone","").trim();
+		this.timeZoneMillis=timeZoneStr.isEmpty()?8*3600*1000:Integer.parseInt(timeZoneStr)*36000;
 		
-		String numFieldStr=config.getProperty("numFields");
-		if(isEmpty(numFieldStr)) {
-			numFieldSet=new HashSet<String>();
-		}else{
-			String[] numFieldArr=COMMA_REGEX.split(numFieldStr.trim());
-			numFieldSet=Arrays.stream(numFieldArr).map(e->e.trim()).collect(Collectors.toSet());
-		}
+		String numFieldStr=config.getProperty("numFields","").trim();
+		this.numFieldSet=numFieldStr.isEmpty()?new HashSet<String>():Arrays.stream(COMMA_REGEX.split(numFieldStr.trim())).map(e->e.trim()).collect(Collectors.toSet());
 		
-		String timeFieldStr=config.getProperty("timeFields");
-		if(isEmpty(timeFieldStr)) {
-			timeFieldSet=new HashSet<String>();
-		}else{
-			String[] timeFieldArr=COMMA_REGEX.split(timeFieldStr.trim());
-			timeFieldSet=Arrays.stream(timeFieldArr).map(e->e.trim()).collect(Collectors.toSet());
-		}
+		String timeFieldStr=config.getProperty("timeFields","").trim();
+		this.timeFieldSet=timeFieldStr.isEmpty()?new HashSet<String>():Arrays.stream(COMMA_REGEX.split(timeFieldStr.trim())).map(e->e.trim()).collect(Collectors.toSet());
 		
 		initHostAddress();
 		initMongoClientOptions();
-		parse=Boolean.parseBoolean(getParamValue("parse", "true"));
-		fieldSeparator=Pattern.compile(getParamValue("fieldSeparator","\\s+"));
-		maxRetryTimes=Integer.parseInt(getParamValue("maxRetryTimes", "3"));
-		failMaxWaitMills=Long.parseLong(getParamValue("failMaxTimeMills", "2000"));
-		batchMaxWaitMills=Long.parseLong(getParamValue("batchMaxTimeMills", "2000"));
 		
-		String batchSizeStr=config.getProperty("batchSize");
-		if(null!=batchSizeStr) {
-			String tmp=batchSizeStr.trim();
-			if(0!=tmp.length()) batchSize=Integer.parseInt(tmp);
+		String parseStr=config.getProperty("parse", "").trim();
+		this.parse=parseStr.isEmpty()?true:Boolean.parseBoolean(parseStr);
+		
+		String fieldSeparatorStr=config.getProperty("fieldSeparator","").trim();
+		this.fieldSeparator=Pattern.compile(fieldSeparatorStr.isEmpty()?"\\s+":fieldSeparatorStr);
+		
+		String maxRetryTimeStr=config.getProperty("maxRetryTimes","").trim();
+		this.maxRetryTimes=maxRetryTimeStr.isEmpty()?3:Integer.parseInt(maxRetryTimeStr);
+		
+		String failMaxTimeMillStr=config.getProperty("failMaxTimeMills","").trim();
+		this.failMaxWaitMills=failMaxTimeMillStr.isEmpty()?2000:Long.parseLong(failMaxTimeMillStr);
+		
+		String batchMaxTimeMillStr=config.getProperty("batchMaxTimeMills","").trim();
+		this.batchMaxWaitMills=batchMaxTimeMillStr.isEmpty()?2000:Long.parseLong(batchMaxTimeMillStr);
+		
+		String batchSizeStr=config.getProperty("batchSize","").trim();
+		if(!batchSizeStr.isEmpty()) this.batchSize=Integer.parseInt(batchSizeStr);
+		
+		String idFieldStr=config.getProperty("idField","").trim();
+		if(!idFieldStr.isEmpty()) {
+			this.idField=idFieldStr;
 		}
 		
-		String idFieldStr=config.getProperty("idField");
-		if(null!=idFieldStr) {
-			String tmp=idFieldStr.trim();
-			if(0!=tmp.length()) idField=tmp;
-		}
-		
-		String fieldListStr=config.getProperty("fieldList");
-		if(null!=fieldListStr){
+		String fieldListStr=config.getProperty("fieldList","").trim();
+		if(!fieldListStr.isEmpty()){
 			String[] fields=COMMA_REGEX.split(fieldListStr);
 			fieldList=new String[fields.length];
 			for(int i=0;i<fields.length;i++){
 				String fieldName=fields[i].trim();
-				if(0==fieldName.length()){
+				if(fieldName.isEmpty()){
 					fieldList[i]="field"+i;
 					continue;
 				}
@@ -268,15 +255,11 @@ public class MdbConfig {
 			}
 		}
 		
-		String passWordStr=config.getProperty("passWord");
-		String userNameStr=config.getProperty("userName");
-		if(null!=passWordStr && null!=userNameStr) {
-			String pass=passWordStr.trim();
-			String user=userNameStr.trim();
-			if(0!=pass.length() && 0!=user.length()) {
-				userName=user;
-				passWord=pass;
-			}
+		String passWordStr=config.getProperty("passWord","").trim();
+		String userNameStr=config.getProperty("userName","").trim();
+		if(!passWordStr.isEmpty() && !userNameStr.isEmpty()) {
+			userName=userNameStr;
+			passWord=passWordStr;
 		}
 		
 		if(null==userName || null==passWord) {
@@ -296,7 +279,8 @@ public class MdbConfig {
 	 * 初始化主机地址列表
 	 */
 	private void initHostAddress(){
-		String[] hosts=COMMA_REGEX.split(getParamValue("hostList", "127.0.0.1:27017"));
+		String hostListStr=config.getProperty("hostList","").trim();
+		String[] hosts=hostListStr.isEmpty()?new String[]{"127.0.0.1:27017"}:COMMA_REGEX.split(hostListStr);
 		for(int i=0;i<hosts.length;i++){
 			String host=hosts[i].trim();
 			if(0==host.length()) continue;
@@ -327,65 +311,46 @@ public class MdbConfig {
 	 */
 	private void initMongoClientOptions() {
 		Builder options = MongoClientOptions.builder();
-		options.socketTimeout(Integer.parseInt(getParamValue("socketTimeout", "0")));
-		options.maxWaitTime(Integer.parseInt(getParamValue("maxWaitTime", "5000")));
-		options.connectTimeout(Integer.parseInt(getParamValue("connectTimeout", "30000")));
-		options.connectionsPerHost(Integer.parseInt(getParamValue("connectionsPerHost", "300")));
-		options.cursorFinalizerEnabled(Boolean.parseBoolean(getParamValue("cursorFinalizerEnabled", "true")));
+		String socketTimeout=config.getProperty("socketTimeout","").trim();
+		options.socketTimeout(socketTimeout.isEmpty()?0:Integer.parseInt(socketTimeout));
+		
+		String maxWaitTime=config.getProperty("maxWaitTime","").trim();
+		options.maxWaitTime(maxWaitTime.isEmpty()?5000:Integer.parseInt(maxWaitTime));
+		
+		String connectTimeout=config.getProperty("connectTimeout","").trim();
+		options.connectTimeout(connectTimeout.isEmpty()?30000:Integer.parseInt(connectTimeout));
+		
+		String connectionsPerHost=config.getProperty("connectionsPerHost","").trim();
+		options.connectionsPerHost(connectionsPerHost.isEmpty()?300:Integer.parseInt(connectionsPerHost));
+		
+		String cursorFinalizerEnabled=config.getProperty("cursorFinalizerEnabled","").trim();
+		options.cursorFinalizerEnabled(cursorFinalizerEnabled.isEmpty()?true:Boolean.parseBoolean(cursorFinalizerEnabled));
 		
 		WriteConcern writeConcern=WriteConcern.UNACKNOWLEDGED;
 		
 		try{
-			String w=config.getProperty("w");
-			w=null==w?null:w.trim();
-			w=null==w||0==w.length()?null:w;
-			if(null!=w) writeConcern=writeConcern.withW(w);
+			String w=config.getProperty("w","").trim();
+			if(!w.isEmpty()) writeConcern=writeConcern.withW(w);
 		}catch(Exception e){
 			e.printStackTrace();
 		}
 		
 		try{
-			String wTimeoutMS=config.getProperty("wTimeoutMS");
-			wTimeoutMS=null==wTimeoutMS?null:wTimeoutMS.trim();
-			wTimeoutMS=null==wTimeoutMS||0==wTimeoutMS.length()?null:wTimeoutMS;
-			if(null!=wTimeoutMS)writeConcern=writeConcern.withWTimeout(Long.parseLong(wTimeoutMS), TimeUnit.MILLISECONDS);
+			String wTimeoutMS=config.getProperty("wTimeoutMS","").trim();
+			if(!wTimeoutMS.isEmpty()) writeConcern=writeConcern.withWTimeout(Long.parseLong(wTimeoutMS), TimeUnit.MILLISECONDS);
 		}catch(Exception e){
 			e.printStackTrace();
 		}
 
 		try{
-			String journal=config.getProperty("journal");
-			journal=null==journal?null:journal.trim();
-			journal=null==journal||0==journal.length()?null:journal;
-			if(null!=journal)writeConcern=writeConcern.withJournal(Boolean.parseBoolean(journal));
+			String journal=config.getProperty("journal","").trim();
+			if(!journal.isEmpty()) writeConcern=writeConcern.withJournal(Boolean.parseBoolean(journal));
 		}catch(Exception e){
 			e.printStackTrace();
 		}
 		
 		options.writeConcern(writeConcern);
 		mongoClientOptions=options.build();
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private String getParamValue(String key,String defaultValue){
-		String value=config.getProperty(key, defaultValue).trim();
-		return value.length()==0?defaultValue:value;
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private static final boolean isEmpty(String value) {
-		if(null==value) return true;
-		return 0==value.trim().length();
 	}
 	
 	/**

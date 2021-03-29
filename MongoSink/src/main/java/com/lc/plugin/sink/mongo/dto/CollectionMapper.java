@@ -56,7 +56,7 @@ public class CollectionMapper<E> {
 	 * @throws InterruptedException
 	 */
 	public boolean send() throws InterruptedException {
-		if(null==collection || null==docList || 0==docList.size()) return false;
+		if(null==collection || null==docList || docList.isEmpty()) return false;
 		boolean loop=false;
 		int times=0;
 		do{

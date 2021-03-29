@@ -67,9 +67,6 @@ public class MdbService {
 	 * @throws InterruptedException
 	 */
 	public Boolean parseAndSingleSend(String msg) throws InterruptedException {
-		if(null==msg) return null;
-		if(0==(msg=msg.trim()).length()) return null;
-		
 		HashMap<String,Object> docMap=new HashMap<String,Object>();
 		String[] fieldValues=mdbConfig.fieldSeparator.split(msg);
 		if(null==mdbConfig.fieldList || 0==mdbConfig.fieldList.length){
@@ -82,11 +79,11 @@ public class MdbService {
 			for(;i<fieldValues.length;docMap.put("field"+i, fieldValues[i]),i++);
 		}
 		
-		if(0==docMap.size()) return null;
+		if(docMap.isEmpty()) return null;
 		
 		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(!(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).isEmpty()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String numField:mdbConfig.numFieldSet) {
@@ -112,11 +109,11 @@ public class MdbService {
 	 */
 	public Boolean parseAndBatchSend(String msg) throws InterruptedException {
 		if(null==msg) {
-			if(0==batchList.size()) return null;
+			if(batchList.isEmpty()) return null;
 			return batchSend(batchList);
 		}
 		
-		if(0==(msg=msg.trim()).length()) return null;
+		if((msg=msg.trim()).isEmpty()) return null;
 		
 		HashMap<String,Object> docMap=new HashMap<String,Object>();
 		String[] fieldValues=mdbConfig.fieldSeparator.split(msg);
@@ -130,11 +127,11 @@ public class MdbService {
 			for(;i<fieldValues.length;docMap.put("field"+i, fieldValues[i]),i++);
 		}
 		
-		if(0==docMap.size()) return null;
+		if(docMap.isEmpty()) return null;
 		
 		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(!(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).isEmpty()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String numField:mdbConfig.numFieldSet) {
@@ -162,14 +159,12 @@ public class MdbService {
 	 * @throws InterruptedException
 	 */
 	public Boolean noParseAndSingleSend(String msg) throws InterruptedException {
-		if(null==msg) return null;
-		if(0==(msg=msg.trim()).length()) return null;
 		HashMap<String,Object> docMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
-		if(null==docMap || 0==docMap.size()) return null;
+		if(null==docMap || docMap.isEmpty()) return null;
 		
 		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(!(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).isEmpty()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String timeField:mdbConfig.timeFieldSet){
@@ -189,17 +184,17 @@ public class MdbService {
 	 */
 	public Boolean noParseAndBatchSend(String msg) throws InterruptedException {
 		if(null==msg) {
-			if(0==batchList.size()) return null;
+			if(batchList.isEmpty()) return null;
 			return batchSend(batchList);
 		}
 		
-		if(0==(msg=msg.trim()).length()) return null;
+		if((msg=msg.trim()).isEmpty()) return null;
 		HashMap<String,Object> docMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
-		if(null==docMap || 0==docMap.size()) return null;
+		if(null==docMap || docMap.isEmpty()) return null;
 		
 		if(null!=mdbConfig.idField){
 			String docIdVal=null;
-			if(0!=(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).length()) docMap.put("_id", docIdVal);
+			if(!(docIdVal=docMap.getOrDefault(mdbConfig.idField, "").toString().trim()).isEmpty()) docMap.put("_id", docIdVal);
 		}
 		
 		for(String timeField:mdbConfig.timeFieldSet){
@@ -247,7 +242,7 @@ public class MdbService {
 	 */
 	private boolean batchSend(ArrayList<Document> batchDocList) throws InterruptedException {
 		HashMap<CollectionWrapper<Document>,ArrayList<Document>> collMap=getBatchCollectionMap(batchDocList);
-		if(null==collMap || 0==collMap.size()) return false;
+		if(null==collMap || collMap.isEmpty()) return false;
 		boolean finalSuccess=true;
 		
 		Set<Entry<CollectionWrapper<Document>, ArrayList<Document>>> entrys=collMap.entrySet();
@@ -360,7 +355,7 @@ public class MdbService {
 	 */
 	private static final boolean isEmpty(String value) {
 		if(null==value) return true;
-		return 0==value.trim().length();
+		return value.trim().isEmpty();
 	}
 	
 	/**
@@ -370,7 +365,7 @@ public class MdbService {
 	 */
 	private Number getNumber(Object value) {
 		String str=value.toString().trim();
-		if(0==str.length()) return null;
+		if(str.isEmpty()) return null;
 		if(CommonUtil.isInteger(str)) return Long.parseLong(str);
 		return Double.parseDouble(str);
 	}
@@ -385,7 +380,7 @@ public class MdbService {
 		if(value instanceof Number) return new Timestamp(((Number)value).longValue()+mdbConfig.timeZoneMillis);
 		if(value instanceof String) {
 			String str=value.toString().trim();
-			if(0==str.length()) return null;
+			if(str.isEmpty()) return null;
 			Timestamp ts=Timestamp.valueOf(str);
 			ts.setTime(ts.getTime()+mdbConfig.timeZoneMillis);
 			return ts;

@@ -2,7 +2,7 @@ package com.lc.plugin.sink.file.service;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Calendar;
@@ -52,10 +52,10 @@ public class FileService {
 				fileConfig.logFileStream.flush();
 				fileConfig.logFileStream.close();
 				renameFile(isToday,fileConfig.createTime);
-				fileConfig.logFileStream=Files.newOutputStream(fileConfig.logFile.toPath(), StandardOpenOption.APPEND);
+				fileConfig.logFileStream=Files.newOutputStream(fileConfig.logFile.toPath(), StandardOpenOption.CREATE,StandardOpenOption.APPEND);
 				fileConfig.createTime=DateUtil.millSecondsToCalendar(fileConfig.logFile.lastModified());
 			}
-			fileConfig.logFileStream.write((message+"\n").getBytes(Charset.defaultCharset()));
+			fileConfig.logFileStream.write((message+"\n").getBytes(StandardCharsets.UTF_8));
 			fileConfig.logFileStream.flush();
 			return true;
 		} catch (IOException e) {

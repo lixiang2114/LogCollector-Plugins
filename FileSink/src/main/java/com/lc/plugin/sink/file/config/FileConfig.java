@@ -16,6 +16,9 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.lixiang2114.flow.comps.Flow;
 import com.github.lixiang2114.flow.context.SizeUnit;
 import com.github.lixiang2114.flow.util.CommonUtil;
@@ -64,6 +67,11 @@ public class FileConfig {
 	private static final Pattern COMMA_REGEX=Pattern.compile(",");
 	
 	/**
+	 * 日志工具
+	 */
+	private static final Logger log=LoggerFactory.getLogger(FileConfig.class);
+	
+	/**
 	 * 容量正则式
 	 */
 	private static final Pattern CAP_REGEX = Pattern.compile("([1-9]{1}\\d+)([a-zA-Z]{1,5})");
@@ -80,26 +88,31 @@ public class FileConfig {
 	 * @param config
 	 */
 	public FileConfig config() {
-		String filePathStr=getParamValue("filePath","");
-		if(filePathStr.isEmpty()) throw new RuntimeException("filePath value can not be empty...");
-		logFile=new File(filePathStr);
-		maxFileSize=getMaxFileSize();
+		String filePathStr=config.getProperty("filePath", "").trim();
+		if(filePathStr.isEmpty()) {
+			log.error("filePath parameter must be specify...");
+			throw new RuntimeException("filePath value can not be empty...");
+		}
+		
+		this.logFile=new File(filePathStr);
+		if(logFile.exists() && logFile.isDirectory()) {
+			log.error("filePath can not be directory...");
+			throw new RuntimeException("filePath can not be directory...");
+		}
+		
+		String maxHistoryStr=config.getProperty("maxHistory", "").trim();
+		Integer maxHistory=maxHistoryStr.isEmpty()?1:Integer.parseInt(maxHistoryStr);
+		
+		this.maxFileSize=getMaxFileSize();
 		try{
 			File fileDir=logFile.getParentFile();
 			if(!fileDir.exists()) fileDir.mkdirs();
 			
-			Integer maxHistory=Integer.parseInt(getParamValue("maxHistory", "1"));
 			long expireInMills=maxHistory*86400*1000;
 			long curTimeInMills=System.currentTimeMillis();
 			for(File file:fileDir.listFiles()) if(curTimeInMills-Files.getFileAttributeView(Paths.get(file.toURI()), BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS).readAttributes().creationTime().toMillis()>=expireInMills) file.delete();
 			
-			if(!logFile.exists()) {
-				File tmpFile=new File(fileDir,curTimeInMills+"");
-				tmpFile.createNewFile();
-				tmpFile.renameTo(logFile);
-			}
-			
-			logFileStream=Files.newOutputStream(logFile.toPath(), StandardOpenOption.APPEND);
+			logFileStream=Files.newOutputStream(logFile.toPath(), StandardOpenOption.CREATE,StandardOpenOption.APPEND);
 			createTime=DateUtil.millSecondsToCalendar(logFile.lastModified());
 		}catch(IOException e){
 			throw new RuntimeException(e);
@@ -111,21 +124,11 @@ public class FileConfig {
 	 * 获取日志文件最大尺寸
 	 */
 	private Long getMaxFileSize(){
-		String configMaxVal=getParamValue("maxFileSize","");
-		if(0==configMaxVal.length()) return 100*1024*1024L;
+		String configMaxVal=config.getProperty("maxFileSize", "").trim();
+		if(configMaxVal.isEmpty()) return 100*1024*1024L;
 		Matcher matcher=CAP_REGEX.matcher(configMaxVal);
 		if(!matcher.find()) return 100*1024*1024L;
 		return SizeUnit.getBytes(Long.parseLong(matcher.group(1)), matcher.group(2).substring(0,1));
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 键
-	 * @param defaultValue 默认值
-	 */
-	private String getParamValue(String key,String defaultValue) {
-		String tmp=config.getProperty(key, defaultValue).trim();
-		return 0==tmp.length()?defaultValue.trim():tmp;
 	}
 	
 	/**

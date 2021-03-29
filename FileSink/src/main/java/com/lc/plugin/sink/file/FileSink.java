@@ -59,6 +59,7 @@ public class FileSink extends SinkPluginAdapter{
 			String message=null;
 			while(flow.sinkStart) {
 				if(null==(message=filterToSinkChannel.get())) continue;
+				if((message=message.trim()).isEmpty())  continue;
 				if(!fileService.writeMessage(message)) return false;
 			}
 		}catch(Exception e){

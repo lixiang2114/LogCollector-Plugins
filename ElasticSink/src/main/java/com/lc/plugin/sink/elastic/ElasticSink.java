@@ -57,11 +57,14 @@ public class ElasticSink extends SinkPluginAdapter{
 		if(!elasticService.preSend()) return false;
 		
 		try{
+			String message=null;
 			if(elasticConfig.parse){
 				if(null==elasticConfig.batchSize) {
 					log.info("call parseAndSingleSend...");
 					while(flow.sinkStart) {
-						Boolean flag=elasticService.parseAndSingleSend(filterToSinkChannel.get());
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						Boolean flag=elasticService.parseAndSingleSend(message);
 						if(null!=flag && !flag) return false;
 					}
 				}else{
@@ -75,7 +78,9 @@ public class ElasticSink extends SinkPluginAdapter{
 				if(null==elasticConfig.batchSize) {
 					log.info("call noParseAndSingleSend...");
 					while(flow.sinkStart) {
-						Boolean flag=elasticService.noParseAndSingleSend(filterToSinkChannel.get());
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						Boolean flag=elasticService.noParseAndSingleSend(message);
 						if(null!=flag && !flag) return false;
 					}
 				}else{

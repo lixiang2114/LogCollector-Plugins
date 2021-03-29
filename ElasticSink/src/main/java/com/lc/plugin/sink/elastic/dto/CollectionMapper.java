@@ -52,7 +52,7 @@ public class CollectionMapper<E> {
 	 * @throws InterruptedException
 	 */
 	public boolean send() throws InterruptedException {
-		if(null==docKey || null==doc || 0==docKey.trim().length()) return false;
+		if(null==docKey || null==doc || docKey.trim().isEmpty()) return false;
 		boolean loop=false;
 		int times=0;
 		do{

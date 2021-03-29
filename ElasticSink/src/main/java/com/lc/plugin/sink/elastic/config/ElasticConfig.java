@@ -188,69 +188,62 @@ public class ElasticConfig {
 	 * @param config
 	 */
 	public ElasticConfig config() {
-		String defaultIndexStr=config.getProperty("defaultIndex");
-		defaultIndex=isEmpty(defaultIndexStr)?"/test":("/"+defaultIndexStr.trim().toLowerCase());
+		String defaultIndexStr=config.getProperty("defaultIndex","").trim();
+		this.defaultIndex=defaultIndexStr.isEmpty()?"/test":"/"+defaultIndexStr.toLowerCase();
 		
-		String defaultTypeStr=config.getProperty("defaultType");
-		defaultType=isEmpty(defaultTypeStr)?"/_doc":("/"+defaultTypeStr.trim());
+		String defaultTypeStr=config.getProperty("defaultType","").trim();
+		this.defaultType=defaultTypeStr.isEmpty()?"/_doc":"/"+defaultTypeStr;
 		
-		String indexFieldStr=config.getProperty("indexField");
-		indexField=isEmpty(indexFieldStr)?null:indexFieldStr.trim();
+		String indexFieldStr=config.getProperty("indexField","").trim();
+		this.indexField=indexFieldStr.isEmpty()?null:indexFieldStr;
 		
-		String typeFieldStr=config.getProperty("typeField");
-		typeField=isEmpty(typeFieldStr)?null:typeFieldStr.trim();
+		String typeFieldStr=config.getProperty("typeField","").trim();
+		this.typeField=typeFieldStr.isEmpty()?null:typeFieldStr;
 		
-		String clusterNameStr=config.getProperty("clusterName");
-		clusterName=isEmpty(clusterNameStr)?null:clusterNameStr.trim();
+		String clusterNameStr=config.getProperty("clusterName","").trim();
+		this.clusterName=clusterNameStr.isEmpty()?null:clusterNameStr;
 		
-		String enableAuthCacheStr=config.getProperty("enableAuthCache");
-		if(!isEmpty(clusterNameStr)) enableAuthCache=Boolean.parseBoolean(enableAuthCacheStr.trim());
+		String enableAuthCacheStr=config.getProperty("enableAuthCache","").trim();
+		if(!enableAuthCacheStr.isEmpty()) enableAuthCache=Boolean.parseBoolean(enableAuthCacheStr);
 		
-		String timeZoneStr=config.getProperty("timeZone");
-		timeZone=null==timeZoneStr?"":timeZoneStr.trim();
+		this.timeZone=config.getProperty("timeZone","").trim();
 		
-		String numFieldStr=config.getProperty("numFields");
-		if(isEmpty(numFieldStr)) {
-			numFieldSet=new HashSet<String>();
-		}else{
-			String[] numFieldArr=COMMA_REGEX.split(numFieldStr.trim());
-			numFieldSet=Arrays.stream(numFieldArr).map(e->e.trim()).collect(Collectors.toSet());
-		}
+		String numFieldStr=config.getProperty("numFields","").trim();
+		this.numFieldSet=numFieldStr.isEmpty()?new HashSet<String>():Arrays.stream(COMMA_REGEX.split(numFieldStr)).map(e->e.trim()).collect(Collectors.toSet());
 		
-		String timeFieldStr=config.getProperty("timeFields");
-		if(isEmpty(timeFieldStr)) {
-			timeFieldSet=new HashSet<String>();
-		}else{
-			String[] timeFieldArr=COMMA_REGEX.split(timeFieldStr.trim());
-			timeFieldSet=Arrays.stream(timeFieldArr).map(e->e.trim()).collect(Collectors.toSet());
-		}
+		String timeFieldStr=config.getProperty("timeFields","").trim();
+		this.timeFieldSet=timeFieldStr.isEmpty()?new HashSet<String>():Arrays.stream(COMMA_REGEX.split(timeFieldStr)).map(e->e.trim()).collect(Collectors.toSet());
 		
 		initHostAddress();
-		parse=Boolean.parseBoolean(getParamValue("parse", "true"));
-		fieldSeparator=Pattern.compile(getParamValue("fieldSeparator","\\s+"));
-		maxRetryTimes=Integer.parseInt(getParamValue("maxRetryTimes", "3"));
-		failMaxWaitMills=Long.parseLong(getParamValue("failMaxTimeMills", "2000"));
-		batchMaxWaitMills=Long.parseLong(getParamValue("batchMaxTimeMills", "2000"));
 		
-		String batchSizeStr=config.getProperty("batchSize");
-		if(null!=batchSizeStr) {
-			String tmp=batchSizeStr.trim();
-			if(0!=tmp.length()) batchSize=Integer.parseInt(tmp);
-		}
+		String parseStr=config.getProperty("parse","").trim();
+		this.parse=parseStr.isEmpty()?true:Boolean.parseBoolean(parseStr);
 		
-		String idFieldStr=config.getProperty("idField");
-		if(null!=idFieldStr) {
-			String tmp=idFieldStr.trim();
-			if(0!=tmp.length()) idField=tmp;
-		}
+		String fieldSeparatorStr=config.getProperty("fieldSeparator","").trim();
+		this.fieldSeparator=Pattern.compile(fieldSeparatorStr.isEmpty()?"\\s+":fieldSeparatorStr);
 		
-		String fieldListStr=config.getProperty("fieldList");
-		if(null!=fieldListStr){
+		String maxRetryTimeStr=config.getProperty("maxRetryTimes","").trim();
+		this.maxRetryTimes=maxRetryTimeStr.isEmpty()?3:Integer.parseInt(maxRetryTimeStr);
+		
+		String failMaxTimeMillStr=config.getProperty("failMaxTimeMills","").trim();
+		this.failMaxWaitMills=failMaxTimeMillStr.isEmpty()?2000:Long.parseLong(failMaxTimeMillStr);
+		
+		String batchMaxTimeMillStr=config.getProperty("batchMaxTimeMills","").trim();
+		this.batchMaxWaitMills=batchMaxTimeMillStr.isEmpty()?2000:Long.parseLong(batchMaxTimeMillStr);
+		
+		String batchSizeStr=config.getProperty("batchSize","").trim();
+		if(!batchSizeStr.isEmpty()) this.batchSize=Integer.parseInt(batchSizeStr);
+		
+		String idFieldStr=config.getProperty("idField","").trim();
+		if(!idFieldStr.isEmpty()) this.idField=idFieldStr;
+		
+		String fieldListStr=config.getProperty("fieldList","").trim();
+		if(!fieldListStr.isEmpty()){
 			String[] fields=COMMA_REGEX.split(fieldListStr);
-			fieldList=new String[fields.length];
+			this.fieldList=new String[fields.length];
 			for(int i=0;i<fields.length;i++){
 				String fieldName=fields[i].trim();
-				if(0==fieldName.length()){
+				if(fieldName.isEmpty()){
 					fieldList[i]="field"+i;
 					continue;
 				}
@@ -258,15 +251,11 @@ public class ElasticConfig {
 			}
 		}
 		
-		String passWordStr=config.getProperty("passWord");
-		String userNameStr=config.getProperty("userName");
-		if(null!=passWordStr && null!=userNameStr) {
-			String pass=passWordStr.trim();
-			String user=userNameStr.trim();
-			if(0!=pass.length() && 0!=user.length()) {
-				userName=user;
-				passWord=pass;
-			}
+		String passWordStr=config.getProperty("passWord","").trim();
+		String userNameStr=config.getProperty("userName","").trim();
+		if(!passWordStr.isEmpty() && !userNameStr.isEmpty()) {
+			this.userName=userNameStr;
+			this.passWord=passWordStr;
 		}
 		
 		RestClientBuilder builder=RestClient.builder(hostList);
@@ -292,12 +281,13 @@ public class ElasticConfig {
 	/**
 	 * 初始化主机地址列表
 	 */
-	private void initHostAddress(){
-		String[] hosts=COMMA_REGEX.split(getParamValue("hostList", "127.0.0.1:9200"));
+	private void initHostAddress() {
+		String hostListStr=config.getProperty("hostList", "").trim();
+		String[] hosts=hostListStr.isEmpty()?new String[]{"127.0.0.1:9200"}:COMMA_REGEX.split(hostListStr);
 		hostList=new HttpHost[hosts.length];
 		for(int i=0;i<hosts.length;i++){
 			String host=hosts[i].trim();
-			if(0==host.length()) continue;
+			if(host.isEmpty()) continue;
 			String[] ipAndPort=COLON_REGEX.split(host);
 			if(ipAndPort.length>=2){
 				String ip=ipAndPort[0].trim();
@@ -317,28 +307,6 @@ public class ElasticConfig {
 				hostList[i]=new HttpHost(unknow, 9200, "http");
 			}
 		}
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private String getParamValue(String key,String defaultValue){
-		String value=config.getProperty(key, defaultValue).trim();
-		return value.length()==0?defaultValue:value;
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private static final boolean isEmpty(String value) {
-		if(null==value) return true;
-		return 0==value.trim().length();
 	}
 	
 	/**

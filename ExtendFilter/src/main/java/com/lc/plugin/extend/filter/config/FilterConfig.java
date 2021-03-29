@@ -72,7 +72,7 @@ public class FilterConfig {
 	 */
 	public FilterConfig config() {
 		String throughStr=config.getProperty("through","").trim();
-		this.through=Boolean.parseBoolean(throughStr.isEmpty()?"false":throughStr);
+		this.through=throughStr.isEmpty()?false:Boolean.parseBoolean(throughStr);
 		if(this.through) return this;
 		
 		File libPath=new File(filterPath,"lib");

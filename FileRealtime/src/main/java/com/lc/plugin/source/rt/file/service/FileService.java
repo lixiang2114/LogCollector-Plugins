@@ -92,29 +92,29 @@ public class FileService {
 					fileConfig.lineNumber=fileConfig.lineNumber++;
 					
 					String record=line.trim();
-					if(0==record.length()) continue;
+					if(record.isEmpty()) continue;
 					
 					sourceToFilterChannel.put(record);
 				}
 			}
 			
 			log.info("FileRealtime plugin realtime etl process normal exit,execute checkpoint...");
-			fileConfig.refreshCheckPoint();
+			return true;
 		}catch(Exception e){
+			log.error("FileRealtime plugin realtime etl process occur Error...",e);
+			return false;
+		}finally{
 			try {
 				fileConfig.refreshCheckPoint();
-			} catch (IOException e1) {
-				e1.printStackTrace();
+			} catch (IOException e) {
+				log.error("FileRealtime plugin realtime refreshCheckPoint occur Error...",e);
 			}
-			log.info("FileRealtime plugin realtime etl process occur Error...",e);
-		}finally{
 			try{
 				if(null!=raf) raf.close();
 			}catch(IOException e){
-				e.printStackTrace();
+				log.error("FileRealtime plugin close random file stream occur Error...",e);
 			}
 		}
-		return null;
 	}
 	
 	/**

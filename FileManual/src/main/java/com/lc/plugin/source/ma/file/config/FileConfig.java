@@ -106,8 +106,8 @@ public class FileConfig {
 		File configFile=new File(pluginPath,"source.properties");
 		loggerConfig=PropertiesReader.getProperties(configFile);
 		
-		String scanTypeStr=loggerConfig.getProperty("scanType","file").trim();
-		scanType=ScanType.valueOf(scanTypeStr.isEmpty()?"file":scanTypeStr);
+		String scanTypeStr=loggerConfig.getProperty("scanType","").trim();
+		this.scanType=scanTypeStr.isEmpty()?ScanType.file:ScanType.valueOf(scanTypeStr);
 		
 		if(ScanType.file==scanType) {
 			String manualFileName=loggerConfig.getProperty("manualFile","").trim();
@@ -149,28 +149,26 @@ public class FileConfig {
 			}
 		}
 		
-		String multiThreadStr=loggerConfig.getProperty("multiThread","false").trim();
-		this.multiThread=Boolean.parseBoolean(multiThreadStr.isEmpty()?"false":multiThreadStr);
+		String multiThreadStr=loggerConfig.getProperty("multiThread","").trim();
+		this.multiThread=multiThreadStr.isEmpty()?false:Boolean.parseBoolean(multiThreadStr);
 		
 		if(!multiThread && ScanType.path==scanType) {
-			String readedFileStr=loggerConfig.getProperty("readedFile","readedFiles.ini").trim();
+			String readedFileStr=loggerConfig.getProperty("readedFile","").trim();
 			this.readedSetFile=new File(pluginPath,readedFileStr.isEmpty()?"readedFiles.ini":readedFileStr).toPath();
 			try {
 				this.readedFiles=new HashSet<String>(Files.readAllLines(readedSetFile, StandardCharsets.UTF_8));
 			} catch (IOException e) {
-				e.printStackTrace();
+				log.error("read file readed occur error...",e);
 			}
 		}
 		
-		String lineNumberStr=loggerConfig.getProperty("lineNumber","0").trim();
-		lineNumber=Integer.parseInt(lineNumberStr.isEmpty()?"0":lineNumberStr);
+		String lineNumberStr=loggerConfig.getProperty("lineNumber","").trim();
+		this.lineNumber=lineNumberStr.isEmpty()?0:Integer.parseInt(lineNumberStr);
 		
-		String byteNumberStr=loggerConfig.getProperty("byteNumber","0").trim();
-		byteNumber=Integer.parseInt(byteNumberStr.isEmpty()?"0":byteNumberStr);
+		String byteNumberStr=loggerConfig.getProperty("byteNumber","").trim();
+		this.byteNumber=byteNumberStr.isEmpty()?0:Integer.parseInt(byteNumberStr);
 		
-		log.info("lineNumber is: "+lineNumber);
-		log.info("byteNumber is: "+byteNumber);
-		
+		log.info("lineNumber is: "+lineNumber+",byteNumber is: "+byteNumber);
 		return this;
 	}
 	

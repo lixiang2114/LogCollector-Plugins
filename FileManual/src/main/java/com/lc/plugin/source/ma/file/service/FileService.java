@@ -70,7 +70,7 @@ public class FileService {
 				}
 				fileConfig.refreshCheckPoint();
 			} catch (IOException e) {
-				log.info("FileManual plugin execute checkpoint occur error: {}",e);
+				log.error("FileManual plugin execute checkpoint occur error: {}",e);
 			}
 		}else{ //扫描指定目录
 			File[] files=fileConfig.manualPath.listFiles();
@@ -103,7 +103,7 @@ public class FileService {
 					}
 					fileConfig.refreshCheckPoint();
 				} catch (IOException e) {
-					log.info("FileManual plugin execute checkpoint occur error: {}",e);
+					log.error("FileManual plugin execute checkpoint occur error: {}",e);
 				}
 			}
 		}

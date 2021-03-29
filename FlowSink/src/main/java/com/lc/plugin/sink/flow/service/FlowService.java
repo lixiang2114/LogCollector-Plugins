@@ -200,7 +200,7 @@ public class FlowService {
 		int[] indexs=(int[])msgAndIndex[1];
 		
 		if(null==message || null==indexs || 0==indexs.length) return false;
-		for(int i=0;i<indexs.length;indexs[i]=0>indexs[i]?0:indexs[i++]);
+		for(int i=0;i<indexs.length;i++) if(0>indexs[i]) indexs[i]=0;
 		
 		try {
 			for(int i=0;i<indexs.length;targetFlowList.get(indexs[i++]).writeMessage(message));

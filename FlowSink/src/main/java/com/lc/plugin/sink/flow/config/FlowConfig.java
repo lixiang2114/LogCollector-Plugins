@@ -135,19 +135,19 @@ public class FlowConfig {
 	 */
 	public FlowConfig config() throws Exception {
 		//转发项列表
-		String dispatcherItemStr=getParamValue("dispatcherItems","").trim();
+		String dispatcherItemStr=loggerConfig.getProperty("dispatcherItems", "").trim();
 		if(dispatcherItemStr.isEmpty()) {
 			log.error("dispatcherItems is empty...");
 			throw new RuntimeException("dispatcherItems is empty...");
 		}
 		
 		//转存日志文件最大尺寸
-		targetFileMaxSize=getTargetFileMaxSize();
+		this.targetFileMaxSize=getTargetFileMaxSize();
 		log.info("target file max size is: "+targetFileMaxSize);
 		
 		//转发模式
-		String sendModeStr=getParamValue("sendMode","").trim();
-		sendMode=sendModeStr.isEmpty()?SendMode.valueOf("rep"):SendMode.valueOf(sendModeStr);
+		String sendModeStr=loggerConfig.getProperty("sendMode","").trim();
+		sendMode=sendModeStr.isEmpty()?SendMode.rep:SendMode.valueOf(sendModeStr);
 		
 		//目标项目列表
 		String[] typeAndItemStrArray=COMMA_REGEX.split(dispatcherItemStr);
@@ -199,16 +199,16 @@ public class FlowConfig {
 		log.info("target items are: "+transferMapperSet);
 		
 		if(SendMode.field==sendMode) {
-			String ruleStr=getParamValue("rule","").trim();
-			String itemSeparator=getParamValue("itemSeparator","").trim();
-			this.ruleType=RuleType.valueOf(ruleStr.isEmpty()?"index":ruleStr);
-			this.itemRegex=Pattern.compile(itemSeparator.isEmpty()?"!":itemSeparator);
+			String ruleStr=loggerConfig.getProperty("rule","").trim();
+			String itemSeparator=loggerConfig.getProperty("itemSeparator","").trim();
+			this.ruleType=ruleStr.isEmpty()?RuleType.index:RuleType.valueOf(ruleStr);
+			this.itemRegex=Pattern.compile(itemSeparator.isEmpty()?"#":itemSeparator);
 			if(RuleType.key==ruleType) { //key类型
-				String keyStr=getParamValue(RuleType.key.typeName,"").trim();
+				String keyStr=loggerConfig.getProperty(RuleType.key.typeName,"").trim();
 				this.itemKey=keyStr.isEmpty()?"flows":keyStr;
 			}else{ //index类型
-				String fieldSeparator=getParamValue("fieldSeparator","").trim();
-				String keyStr=getParamValue(RuleType.index.typeName,"").trim();
+				String fieldSeparator=loggerConfig.getProperty("fieldSeparator","").trim();
+				String keyStr=loggerConfig.getProperty(RuleType.index.typeName,"").trim();
 				this.itemKey=keyStr.isEmpty()?"0":keyStr;
 				this.fieldRegex=Pattern.compile(fieldSeparator.isEmpty()?",":fieldSeparator);
 			}
@@ -223,14 +223,15 @@ public class FlowConfig {
 			if(ClassLoaderUtil.compileJavaSource(srcPath,binPath,new File[]{appPath,libPath})) {
 				ClassLoaderUtil.addFileToCurrentClassPath(binPath);
 			}else{
-				log.error("compile script failure: {}",srcPath.getAbsolutePath());
-				throw new RuntimeException("compile script failure: "+srcPath.getAbsolutePath());
+				String srcPathName=srcPath.getAbsolutePath();
+				log.error("compile script failure: {}",srcPathName);
+				throw new RuntimeException("compile script failure: "+srcPathName);
 			}
 			
-			String mainClassStr=getParamValue("mainClass","").trim();
+			String mainClassStr=loggerConfig.getProperty("mainClass","").trim();
 			this.mainClass=mainClassStr.isEmpty()?"DefaultClass":mainClassStr;
 			
-			String mainMethodStr=getParamValue("mainMethod","").trim();
+			String mainMethodStr=loggerConfig.getProperty("mainMethod","").trim();
 			this.mainMethod=mainMethodStr.isEmpty()?"main":mainMethodStr;
 		}
 		
@@ -241,21 +242,11 @@ public class FlowConfig {
 	 * 获取转存日志文件最大尺寸(默认为2GB)
 	 */
 	private Long getTargetFileMaxSize(){
-		String configMaxVal=getParamValue("targetFileMaxSize","");
+		String configMaxVal=loggerConfig.getProperty("targetFileMaxSize","").trim();
 		if(configMaxVal.isEmpty()) return 2*1024*1024*1024L;
 		Matcher matcher=CAP_REGEX.matcher(configMaxVal);
 		if(!matcher.find()) return 2*1024*1024*1024L;
 		return SizeUnit.getBytes(Long.parseLong(matcher.group(1)), matcher.group(2).substring(0,1));
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 键
-	 * @param defaultValue 默认值
-	 */
-	private String getParamValue(String key,String defaultValue) {
-		String tmp=loggerConfig.getProperty(key, defaultValue).trim();
-		return tmp.isEmpty()?defaultValue:tmp;
 	}
 	
 	/**

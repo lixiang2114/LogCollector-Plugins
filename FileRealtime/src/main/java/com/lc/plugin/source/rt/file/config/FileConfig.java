@@ -95,21 +95,26 @@ public class FileConfig {
 		loggerConfig=PropertiesReader.getProperties(configFile);
 		
 		//数据扫描模式
-		String scanModeStr=loggerConfig.getProperty("scanMode","file").trim();
-		scanMode=scanModeStr.isEmpty()?ScanMode.valueOf("file"):ScanMode.valueOf(scanModeStr);
+		String scanModeStr=loggerConfig.getProperty("scanMode","").trim();
+		scanMode=scanModeStr.isEmpty()?ScanMode.file:ScanMode.valueOf(scanModeStr);
 		
 		if(ScanMode.channel==scanMode) return this;
-		
-		//默认实时缓冲日志文件
-		File bufferLogFile=new File(transferPath,"buffer.log.0");
 		
 		//实时自动推送的日志文件
 		String loggerFileName=loggerConfig.getProperty("loggerFile","").trim();
 		if(loggerFileName.isEmpty()) {
-			loggerFile=bufferLogFile;
+			loggerFile=new File(transferPath,"buffer.log.0");
 			log.warn("not found parameter: 'loggerFile',will be use default...");
 		}else{
 			File file=new File(loggerFileName);
+			if(file.exists() && file.isDirectory()) {
+				log.error("loggerFile can not be directory...");
+				throw new RuntimeException("loggerFile can not be directory...");
+			}
+			
+			File filePath=file.getParentFile();
+			if(!filePath.exists()) filePath.mkdirs();
+			
 			if(!file.exists()) {
 				log.warn("file: {} is not exists,it will be create...",file.getAbsolutePath());
 				try {
@@ -120,25 +125,25 @@ public class FileConfig {
 				}
 			}
 			
-			if(file.isDirectory()) {
-				log.error("logger file can not be directory...");
-				throw new RuntimeException("logger file can not be directory...");
-			}
-			
+			String fileFullName=file.getAbsolutePath();
+			if(!fileFullName.contains(".")) file.renameTo(new File(fileFullName+".0"));
 			loggerFile=file;
 		}
 		
 		log.info("realTime logger file is: "+loggerFile.getAbsolutePath());
 		
 		//是否自动删除缓冲日志文件
-		delOnReaded=Boolean.parseBoolean(loggerConfig.getProperty("delOnReaded","true").trim());
+		String delOnReadedStr=loggerConfig.getProperty("delOnReaded","").trim();
+		this.delOnReaded=delOnReadedStr.isEmpty()?true:Boolean.parseBoolean(delOnReadedStr);
 		
 		//实时自动推送的日志文件检查点
-		lineNumber=Integer.parseInt(loggerConfig.getProperty("lineNumber","0").trim());
-		log.info("lineNumber is: "+lineNumber);
-		byteNumber=Integer.parseInt(loggerConfig.getProperty("byteNumber","0").trim());
-		log.info("byteNumber is: "+byteNumber);
+		String lineNumberStr=loggerConfig.getProperty("lineNumber","").trim();
+		this.lineNumber=lineNumberStr.isEmpty()?0:Integer.parseInt(lineNumberStr);
 		
+		String byteNumberStr=loggerConfig.getProperty("byteNumber","").trim();
+		this.byteNumber=byteNumberStr.isEmpty()?0:Integer.parseInt(byteNumberStr);
+		
+		log.info("lineNumber is: "+lineNumber+",byteNumber is: "+byteNumber);
 		return this;
 	}
 	

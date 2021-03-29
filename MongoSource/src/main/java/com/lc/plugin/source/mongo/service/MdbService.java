@@ -101,15 +101,14 @@ public class MdbService {
 			}
 			
 			log.info("MongoSource plugin etl process normal exit,execute checkpoint...");
-			mdbConfig.refreshCheckPoint();
 		}catch(Exception e){
+			log.error("MongoSource plugin etl process occur Error...",e);
+		}finally{
 			try {
 				mdbConfig.refreshCheckPoint();
-			} catch (IOException e1) {
-				log.info("MongoSource call refreshCheckPoint occur Error...",e1);
+			} catch (IOException e) {
+				log.error("MongoSource call refreshCheckPoint occur Error...",e);
 			}
-			log.info("MongoSource plugin etl process occur Error...",e);
-		}finally{
 			mdbConfig.mongoClient.close();
 		}
 		return true;

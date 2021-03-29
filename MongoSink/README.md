@@ -34,4 +34,4 @@ unzip  /install/zip/mongoSink.zip -d /software/LogCollector-2.0/plugins/
 |failMaxTimeMills|失败等待|2000|前后两次重试之间等待的最大时间间隔(单位:毫秒)|
 |batchMaxTimeMills|批量等待|2000|批处理过程中等待上游数据的最大时间间隔(单位:毫秒)|
 ##### 备注：  
-timeFields、numFields、fieldList和hostList参数值都可以有多项，项与项之间使用英文逗号分隔即可。  
+timeFields、numFields、fieldList和hostList参数值都可以有多项，项与项之间使用英文逗号分隔即可；另外本插件还支持很多相关MongoDB的连接参数项，这些参数项的名称与MongoDB官方参数名相同，有兴趣者可以自行测试之。  

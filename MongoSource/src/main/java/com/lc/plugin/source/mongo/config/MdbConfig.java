@@ -150,25 +150,28 @@ public class MdbConfig {
 	 * @param config
 	 */
 	public MdbConfig config() {
-		String dataBaseStr=config.getProperty("dataBaseName");
-		if(isEmpty(dataBaseStr)) throw new RuntimeException("No Database Name Specified...");
+		String dataBaseStr=config.getProperty("dataBaseName","").trim();
+		if(dataBaseStr.isEmpty()) throw new RuntimeException("No Database Name Specified...");
 		
-		String collectionStr=config.getProperty("collectionName");
-		if(isEmpty(collectionStr)) throw new RuntimeException("No Collection Name Specified...");
+		String collectionStr=config.getProperty("collectionName","").trim();
+		if(collectionStr.isEmpty()) throw new RuntimeException("No Collection Name Specified...");
 		
 		initHostAddress();
 		initSelectSqlParameter();
 		initMongoClientOptions();
 		
-		String passWordStr=config.getProperty("passWord");
-		String userNameStr=config.getProperty("userName");
-		if(!isEmpty(passWordStr) && !isEmpty(userNameStr)) {
-			userName=userNameStr.trim();
-			passWord=passWordStr.trim();
+		String passWordStr=config.getProperty("passWord","").trim();
+		String userNameStr=config.getProperty("userName","").trim();
+		if(!passWordStr.isEmpty() && !userNameStr.isEmpty()) {
+			userName=userNameStr;
+			passWord=passWordStr;
 		}
 		
-		outFormat=getParamValue("outFormat", "qstr");
-		realtime=Boolean.parseBoolean(getParamValue("realtime", "true"));
+		String outFormatStr=config.getProperty("outFormat","").trim();
+		this.outFormat=outFormatStr.isEmpty()?"qstr":outFormatStr;
+		
+		String realtimeStr=config.getProperty("realtime", "").trim();
+		this.realtime=realtimeStr.isEmpty()?true:Boolean.parseBoolean(realtimeStr);
 		
 		if(null==userName || null==passWord) {
 			mongoClient=new MongoClient(hostList,mongoClientOptions);
@@ -186,12 +189,15 @@ public class MdbConfig {
 	 * 初始化查询SQL参数
 	 */
 	private void initSelectSqlParameter() {
-		selectSQL=getParamValue("selectSQL","[{$skip:0},{$limit:100}]");
+		String selectSQLStr=config.getProperty("selectSQL","").trim();
+		this.selectSQL=selectSQLStr.isEmpty()?"[{$skip:0},{$limit:100}]":selectSQLStr;
+		
 		if(!selectSQL.startsWith("[") || !selectSQL.endsWith("]")) {
 			log.error("mongo sql must be array json format: [{..},{..}]");
 			throw new RuntimeException("mongo sql must be array json format: [{..},{..}]");
 		}
-		if(0!=(selectSQL=selectSQL.substring(1, selectSQL.length()-1).trim()).length()) {
+		
+		if(!(selectSQL=selectSQL.substring(1, selectSQL.length()-1).trim()).isEmpty()) {
 			String[] operArray=COMMA_REGEX.split(selectSQL);
 			if(2>operArray.length) {
 				log.error("mongo sql least have two parameter: {$skip:<startIndex>},{$limit:<batchSize>}");
@@ -215,8 +221,9 @@ public class MdbConfig {
 	 * 初始化主机地址列表
 	 */
 	private void initHostAddress(){
-		String[] hosts=COMMA_REGEX.split(getParamValue("hostList", "127.0.0.1:27017"));
-		for(int i=0;i<hosts.length;i++){
+		String hostListStr=config.getProperty("hostList", "").trim();
+		String[] hosts=hostListStr.isEmpty()?new String[]{"127.0.0.1:27017"}:COMMA_REGEX.split(hostListStr);
+		for(int i=0;i<hosts.length;i++) {
 			String host=hosts[i].trim();
 			if(0==host.length()) continue;
 			String[] ipAndPort=COLON_REGEX.split(host);
@@ -246,66 +253,47 @@ public class MdbConfig {
 	 */
 	private void initMongoClientOptions() {
 		Builder options = MongoClientOptions.builder();
-		options.socketTimeout(Integer.parseInt(getParamValue("socketTimeout", "0")));
-		options.maxWaitTime(Integer.parseInt(getParamValue("maxWaitTime", "5000")));
-		options.connectTimeout(Integer.parseInt(getParamValue("connectTimeout", "30000")));
-		options.connectionsPerHost(Integer.parseInt(getParamValue("connectionsPerHost", "300")));
-		options.cursorFinalizerEnabled(Boolean.parseBoolean(getParamValue("cursorFinalizerEnabled", "true")));
+		
+		String socketTimeout=config.getProperty("socketTimeout", "").trim();
+		options.socketTimeout(socketTimeout.isEmpty()?0:Integer.parseInt(socketTimeout));
+		
+		String maxWaitTime=config.getProperty("maxWaitTime", "").trim();
+		options.maxWaitTime(maxWaitTime.isEmpty()?5000:Integer.parseInt(maxWaitTime));
+		
+		String connectTimeout=config.getProperty("connectTimeout", "").trim();
+		options.connectTimeout(connectTimeout.isEmpty()?30000:Integer.parseInt(connectTimeout));
+		
+		String connectionsPerHost=config.getProperty("connectionsPerHost", "").trim();
+		options.connectionsPerHost(connectionsPerHost.isEmpty()?300:Integer.parseInt(connectionsPerHost));
+		
+		String cursorFinalizerEnabled=config.getProperty("cursorFinalizerEnabled", "").trim();
+		options.cursorFinalizerEnabled(cursorFinalizerEnabled.isEmpty()?true:Boolean.parseBoolean(cursorFinalizerEnabled));
 		
 		WriteConcern writeConcern=WriteConcern.UNACKNOWLEDGED;
 		
 		try{
-			String w=config.getProperty("w");
-			w=null==w?null:w.trim();
-			w=null==w||0==w.length()?null:w;
-			if(null!=w) writeConcern=writeConcern.withW(w);
+			String w=config.getProperty("w","").trim();
+			if(!w.isEmpty()) writeConcern=writeConcern.withW(w);
 		}catch(Exception e){
 			e.printStackTrace();
 		}
 		
 		try{
-			String wTimeoutMS=config.getProperty("wTimeoutMS");
-			wTimeoutMS=null==wTimeoutMS?null:wTimeoutMS.trim();
-			wTimeoutMS=null==wTimeoutMS||0==wTimeoutMS.length()?null:wTimeoutMS;
-			if(null!=wTimeoutMS)writeConcern=writeConcern.withWTimeout(Long.parseLong(wTimeoutMS), TimeUnit.MILLISECONDS);
+			String wTimeoutMS=config.getProperty("wTimeoutMS","").trim();
+			if(!wTimeoutMS.isEmpty()) writeConcern=writeConcern.withWTimeout(Long.parseLong(wTimeoutMS), TimeUnit.MILLISECONDS);
 		}catch(Exception e){
 			e.printStackTrace();
 		}
 
 		try{
-			String journal=config.getProperty("journal");
-			journal=null==journal?null:journal.trim();
-			journal=null==journal||0==journal.length()?null:journal;
-			if(null!=journal)writeConcern=writeConcern.withJournal(Boolean.parseBoolean(journal));
+			String journal=config.getProperty("journal","").trim();
+			if(!journal.isEmpty()) writeConcern=writeConcern.withJournal(Boolean.parseBoolean(journal));
 		}catch(Exception e){
 			e.printStackTrace();
 		}
 		
 		options.writeConcern(writeConcern);
 		mongoClientOptions=options.build();
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private String getParamValue(String key,String defaultValue){
-		String value=config.getProperty(key, defaultValue).trim();
-		return value.length()==0?defaultValue:value;
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private static final boolean isEmpty(String value) {
-		if(null==value) return true;
-		String valueStr=value.trim();
-		return 0==valueStr.length();
 	}
 	
 	/**

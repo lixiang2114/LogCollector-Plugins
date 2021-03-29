@@ -42,7 +42,7 @@ public class MongoSource extends ManualPluginAdapter {
 		}
 		
 		this.mdbConfig=new MdbConfig(flow).config();
-		mdbService=new MdbService(mdbConfig);
+		this.mdbService=new MdbService(mdbConfig);
 		
 		return true;
 	}

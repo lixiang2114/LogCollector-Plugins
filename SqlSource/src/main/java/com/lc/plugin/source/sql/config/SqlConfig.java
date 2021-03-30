@@ -136,36 +136,24 @@ public class SqlConfig {
 	 * @param config
 	 */
 	public SqlConfig config() {
-		String jdbcDriverStr=config.getProperty("jdbcDriver");
-		if(isEmpty(jdbcDriverStr)) {
-			log.error("No Jdbc Driver Specified,Parameter Name: jdbcDriver");
-			throw new RuntimeException("No Jdbc Driver Specified,Parameter Name: jdbcDriver");
-		}else{
-			this.jdbcDriver=jdbcDriverStr.trim();
-		}
-		
-		String connectionString=config.getProperty("connectionString");
-		if(isEmpty(connectionString)) {
-			log.error("No Connection String Specified,Parameter Name: connectionString");
-			throw new RuntimeException("No Connection String Specified,Parameter Name: connectionString");
-		}else{
-			this.connectionString=connectionString.trim();
-		}
-		
-		String selectSQLStr=config.getProperty("selectSQL");
-		if(isEmpty(selectSQLStr)) {
+		this.selectSQL=config.getProperty("selectSQL","").trim();
+		if(selectSQL.isEmpty()) {
 			log.error("No Select SQL Specified,Parameter Name: selectSQL");
 			throw new RuntimeException("No Select SQL Specified,Parameter Name: selectSQL");
-		}else{
-			this.selectSQL=selectSQLStr.trim();
 		}
 		
-		String phFieldsStr=config.getProperty("phFields");
-		if(isEmpty(phFieldsStr)) {
+		String jdbcDriverStr=config.getProperty("jdbcDriver","").trim();
+		this.jdbcDriver=jdbcDriverStr.isEmpty()?"com.mysql.cj.jdbc.Driver":jdbcDriverStr;
+		
+		String connectionString=config.getProperty("connectionString","").trim();
+		this.connectionString=connectionString.isEmpty()?"jdbc:mysql://192.168.162.127:3306/test?useUnicode=true&characterEncoding=utf8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8":connectionString;
+		
+		String phFieldsStr=config.getProperty("phFields","").trim();
+		if(phFieldsStr.isEmpty()) {
 			log.error("No Placeholder Fields Specified,Parameter Name: phFields");
 			throw new RuntimeException("No Placeholder Fields Specified,Parameter Name: phFields");
 		}else{
-			String[] pageFields=COMMA_REGEX.split(phFieldsStr.trim());
+			String[] pageFields=COMMA_REGEX.split(phFieldsStr);
 			if(2>pageFields.length) {
 				log.error("Not Enough Parameters,At Least Two Parameters Are Required!");
 				throw new RuntimeException("Not Enough Parameters,At Least Two Parameters Are Required!");
@@ -180,14 +168,14 @@ public class SqlConfig {
 				}
 				pageFields[i]=tmpField;
 			}
-			phFields=pageFields;
+			this.phFields=pageFields;
 		}
 		
-		String passWordStr=config.getProperty("passWord");
-		String userNameStr=config.getProperty("userName");
-		if(!isEmpty(passWordStr) && !isEmpty(userNameStr)) {
-			userName=userNameStr.trim();
-			passWord=passWordStr.trim();
+		String passWordStr=config.getProperty("passWord","").trim();
+		String userNameStr=config.getProperty("userName","").trim();
+		if(!passWordStr.isEmpty() && !userNameStr.isEmpty()) {
+			this.userName=userNameStr;
+			this.passWord=passWordStr;
 		}
 		
 		try {
@@ -204,11 +192,18 @@ public class SqlConfig {
 			throw new RuntimeException(e);
 		}
 		
-		outFormat=getParamValue("outFormat", "qstr");
-		realtime=Boolean.parseBoolean(getParamValue("realtime", "true"));
+		String outFormatStr=config.getProperty("outFormat", "").trim();
+		this.outFormat=outFormatStr.isEmpty()?"qstr":outFormatStr;
 		
-		Integer batchSize=Integer.parseInt(getParamValue("batchSize","100"));
-		Integer startIndex=Integer.parseInt(getParamValue("startIndex","0"));
+		String realtimeStr=config.getProperty("realtime", "").trim();
+		this.realtime=realtimeStr.isEmpty()?true:Boolean.parseBoolean(realtimeStr);
+		
+		String batchSizeStr=config.getProperty("batchSize", "").trim();
+		Integer batchSize=batchSizeStr.isEmpty()?100:Integer.parseInt(batchSizeStr);
+		
+		String startIndexStr=config.getProperty("startIndex", "").trim();
+		Integer startIndex=startIndexStr.isEmpty()?0:Integer.parseInt(startIndexStr);
+		
 		pageDict.put("endIndex", startIndex+batchSize);
 		pageDict.put("startIndex", startIndex);
 		pageDict.put("batchSize", batchSize);
@@ -226,29 +221,6 @@ public class SqlConfig {
 		}else{
 			return connection=DriverManager.getConnection(connectionString, userName, passWord);
 		}
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private String getParamValue(String key,String defaultValue){
-		String value=config.getProperty(key, defaultValue).trim();
-		return value.length()==0?defaultValue:value;
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
-	private static final boolean isEmpty(String value) {
-		if(null==value) return true;
-		String valueStr=value.trim();
-		return 0==valueStr.length();
 	}
 	
 	/**

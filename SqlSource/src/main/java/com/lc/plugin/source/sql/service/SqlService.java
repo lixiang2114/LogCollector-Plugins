@@ -120,20 +120,20 @@ public class SqlService {
 			}
 			
 			log.info("SqlSource plugin etl process normal exit,execute checkpoint...");
-			sqlConfig.refreshCheckPoint();
 		}catch(Exception e){
-			try {
-				sqlConfig.refreshCheckPoint();
-			} catch (IOException e1) {
-				log.info("SqlSource call refreshCheckPoint occur Error...",e1);
-			}
 			log.info("SqlSource plugin etl process occur Error...",e);
 		}finally{
+			try {
+				sqlConfig.refreshCheckPoint();
+			} catch (IOException e) {
+				log.error("SqlSource call refreshCheckPoint occur Error...",e);
+			}
+			
 			try{
 				if(null!=res) res.close();
 				if(null!=selectStat) selectStat.close();
 			}catch(SQLException e){
-				log.info("SqlSource close sql stream occur Error...",e);
+				log.error("SqlSource close sql stream occur Error...",e);
 			}
 		}
 		return true;

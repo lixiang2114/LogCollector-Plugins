@@ -42,7 +42,7 @@ public class SqlSource extends ManualPluginAdapter {
 		}
 		
 		this.sqlConfig=new SqlConfig(flow).config();
-		sqlService=new SqlService(sqlConfig);
+		this.sqlService=new SqlService(sqlConfig);
 		
 		return true;
 	}

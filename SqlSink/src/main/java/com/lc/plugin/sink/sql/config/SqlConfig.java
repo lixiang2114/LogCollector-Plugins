@@ -157,54 +157,40 @@ public class SqlConfig {
 	 * @param config
 	 */
 	public SqlConfig config() {
-		String jdbcDriverStr=config.getProperty("jdbcDriver");
-		if(isEmpty(jdbcDriverStr)) {
-			log.error("No Jdbc Driver Specified,Parameter Name: jdbcDriver");
-			throw new RuntimeException("No Jdbc Driver Specified,Parameter Name: jdbcDriver");
-		}else{
-			this.jdbcDriver=jdbcDriverStr.trim();
-		}
+		String jdbcDriverStr=config.getProperty("jdbcDriver","").trim();
+		this.jdbcDriver=jdbcDriverStr.isEmpty()?"com.mysql.cj.jdbc.Driver":jdbcDriverStr;
 		
-		String connectionString=config.getProperty("connectionString");
-		if(isEmpty(connectionString)) {
-			log.error("No Connection String Specified,Parameter Name: connectionString");
-			throw new RuntimeException("No Connection String Specified,Parameter Name: connectionString");
-		}else{
-			this.connectionString=connectionString.trim();
-		}
+		String connectionString=config.getProperty("connectionString","").trim();
+		this.connectionString=connectionString.isEmpty()?"jdbc:mysql://127.0.0.1:3306/?useUnicode=true&characterEncoding=utf8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8":connectionString;
 		
-		String tabIndexStr=config.getProperty("tabIndex");
-		tabIndex=isEmpty(tabIndexStr)?null:Integer.parseInt(tabIndexStr.trim());
+		String tabIndexStr=config.getProperty("tabIndex","").trim();
+		this.tabIndex=tabIndexStr.isEmpty()?null:Integer.parseInt(tabIndexStr);
 		
-		String dbIndexStr=config.getProperty("dbIndex");
-		dbIndex=isEmpty(dbIndexStr)?null:Integer.parseInt(dbIndexStr.trim());
+		String dbIndexStr=config.getProperty("dbIndex","").trim();
+		this.dbIndex=dbIndexStr.isEmpty()?null:Integer.parseInt(dbIndexStr);
 		
 		if(null!=tabIndex && null!=dbIndex && tabIndex.intValue()==dbIndex.intValue()) {
 			log.error("dbIndex can not equal tabIndex: {}",tabIndex);
 			throw new RuntimeException("dbIndex can not equal tabIndex: "+tabIndex);
 		}
 		
-		String defaultTabStr=config.getProperty("defaultTab");
-		defaultTab=isEmpty(defaultTabStr)?null:defaultTabStr.trim();
+		String defaultTabStr=config.getProperty("defaultTab","").trim();
+		this.defaultTab=defaultTabStr.isEmpty()?null:defaultTabStr;
 		
-		String defaultDBStr=config.getProperty("defaultDB");
-		defaultDB=isEmpty(defaultDBStr)?null:defaultDBStr.trim();
+		String defaultDBStr=config.getProperty("defaultDB","").trim();
+		this.defaultDB=defaultDBStr.isEmpty()?null:defaultDBStr;
 		
-		String tabFieldStr=config.getProperty("tabField");
-		tabField=isEmpty(tabFieldStr)?null:tabFieldStr.trim();
+		String tabFieldStr=config.getProperty("tabField","").trim();
+		this.tabField=tabFieldStr.isEmpty()?null:tabFieldStr;
 		
-		String dbFieldStr=config.getProperty("dbField");
-		dbField=isEmpty(dbFieldStr)?null:dbFieldStr.trim();
+		String dbFieldStr=config.getProperty("dbField","").trim();
+		this.dbField=dbFieldStr.isEmpty()?null:dbFieldStr;
 		
-		String passWordStr=config.getProperty("passWord");
-		String userNameStr=config.getProperty("userName");
-		if(null!=passWordStr && null!=userNameStr) {
-			String pass=passWordStr.trim();
-			String user=userNameStr.trim();
-			if(0!=pass.length() && 0!=user.length()) {
-				userName=user;
-				passWord=pass;
-			}
+		String passWordStr=config.getProperty("passWord","").trim();
+		String userNameStr=config.getProperty("userName","").trim();
+		if(!passWordStr.isEmpty() && !userNameStr.isEmpty()) {
+			userName=userNameStr;
+			passWord=passWordStr;
 		}
 		
 		try {
@@ -221,17 +207,23 @@ public class SqlConfig {
 			throw new RuntimeException(e);
 		}
 		
-		String batchSizeStr=config.getProperty("batchSize");
-		if(null!=batchSizeStr) {
-			String tmp=batchSizeStr.trim();
-			if(0!=tmp.length()) batchSize=Integer.parseInt(tmp);
-		}
+		String batchSizeStr=config.getProperty("batchSize","").trim();
+		if(!batchSizeStr.isEmpty()) this.batchSize=Integer.parseInt(batchSizeStr);
 		
-		parse=Boolean.parseBoolean(getParamValue("parse", "true"));
-		fieldSeparator=Pattern.compile(getParamValue("fieldSeparator","\\s+"));
-		maxRetryTimes=Integer.parseInt(getParamValue("maxRetryTimes", "3"));
-		failMaxWaitMills=Long.parseLong(getParamValue("failMaxTimeMills", "2000"));
-		batchMaxWaitMills=Long.parseLong(getParamValue("batchMaxTimeMills", "2000"));
+		String parseStr=config.getProperty("parse","").trim();
+		this.parse=parseStr.isEmpty()?true:Boolean.parseBoolean(parseStr);
+		
+		String fieldSeparatorStr=config.getProperty("fieldSeparator","").trim();
+		this.fieldSeparator=Pattern.compile(fieldSeparatorStr.isEmpty()?"\\s+":fieldSeparatorStr);
+		
+		String maxRetryTimeStr=config.getProperty("maxRetryTimes","").trim();
+		this.maxRetryTimes=maxRetryTimeStr.isEmpty()?3:Integer.parseInt(maxRetryTimeStr);
+		
+		String failMaxTimeMillStr=config.getProperty("failMaxTimeMills","").trim();
+		this.failMaxWaitMills=failMaxTimeMillStr.isEmpty()?2000:Long.parseLong(failMaxTimeMillStr);
+		
+		String batchMaxTimeMillStr=config.getProperty("batchMaxTimeMills","").trim();
+		this.batchMaxWaitMills=batchMaxTimeMillStr.isEmpty()?2000:Long.parseLong(batchMaxTimeMillStr);
 		
 		return this;
 	}
@@ -302,21 +294,9 @@ public class SqlConfig {
 	 * @param defaultValue 默认参数值
 	 * @return 参数值
 	 */
-	private String getParamValue(String key,String defaultValue){
-		String value=config.getProperty(key, defaultValue).trim();
-		return value.length()==0?defaultValue:value;
-	}
-	
-	/**
-	 * 获取参数值
-	 * @param key 参数名
-	 * @param defaultValue 默认参数值
-	 * @return 参数值
-	 */
 	private static final boolean isEmpty(String value) {
 		if(null==value) return true;
-		String valueStr=value.trim();
-		return 0==valueStr.length();
+		return value.trim().isEmpty();
 	}
 	
 	/**

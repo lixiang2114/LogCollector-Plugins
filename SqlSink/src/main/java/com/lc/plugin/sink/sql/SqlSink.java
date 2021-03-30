@@ -58,10 +58,13 @@ public class SqlSink extends SinkPluginAdapter{
 		if(!sqlService.preSend()) return false;
 		
 		try{
+			String message=null;
 			if(sqlConfig.parse){
 				if(null==sqlConfig.batchSize) {
 					while(flow.sinkStart) {
-						Boolean flag=sqlService.parseAndSingleSend(filterToSinkChannel.get());
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						Boolean flag=sqlService.parseAndSingleSend(message);
 						if(null!=flag && !flag) return false;
 					}
 				}else{
@@ -73,7 +76,9 @@ public class SqlSink extends SinkPluginAdapter{
 			}else{
 				if(null==sqlConfig.batchSize) {
 					while(flow.sinkStart) {
-						Boolean flag=sqlService.noParseAndSingleSend(filterToSinkChannel.get());
+						if(null==(message=filterToSinkChannel.get())) continue;
+						if((message=message.trim()).isEmpty()) continue;
+						Boolean flag=sqlService.noParseAndSingleSend(message);
 						if(null!=flag && !flag) return false;
 					}
 				}else{

@@ -55,7 +55,7 @@ public class RecordMapper {
 	 * @throws InterruptedException
 	 */
 	public boolean send() throws Exception {
-		if(null==sqlMapper || null==recordList || 0==recordList.size()) return false;
+		if(null==sqlMapper || null==recordList || recordList.isEmpty()) return false;
 		
 		PreparedStatement pstat=sqlMapper.getStatement();
 		LinkedHashMap<String,Class<?>> fieldMap=sqlMapper.fieldMap;

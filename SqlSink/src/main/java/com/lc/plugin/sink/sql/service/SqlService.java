@@ -54,7 +54,7 @@ public class SqlService {
 	 * @throws Exception
 	 */
 	public boolean preSend() throws Exception {
-		if(0==sqlConfig.preFailSinkSet.size())return true;
+		if(sqlConfig.preFailSinkSet.isEmpty())return true;
 		for(Object object:sqlConfig.preFailSinkSet){
 			RecordMapper recordMapper=(RecordMapper)object;
 			recordMapper.sqlConfig=sqlConfig;
@@ -71,13 +71,9 @@ public class SqlService {
 	 * @throws Exception
 	 */
 	public Boolean parseAndSingleSend(String msg) throws Exception {
-		if(null==msg) return null;
-		if(0==(msg=msg.trim()).length()) return null;
-		
 		List<Object> valueList=Arrays.stream(sqlConfig.fieldSeparator.split(msg)).collect(Collectors.toList());
 		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(valueList));
 		if(null==sqlMapper) return null;
-		
 		return singleSend(valueList,sqlMapper);
 	}
 	
@@ -93,7 +89,7 @@ public class SqlService {
 			return batchSend(batchMap);
 		}
 		
-		if(0==(msg=msg.trim()).length()) return null;
+		if((msg=msg.trim()).isEmpty()) return null;
 		
 		List<Object> valueList=Arrays.stream(sqlConfig.fieldSeparator.split(msg)).collect(Collectors.toList());
 		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(valueList));
@@ -119,9 +115,6 @@ public class SqlService {
 	 * @throws Exception
 	 */
 	public Boolean noParseAndSingleSend(String msg) throws Exception {
-		if(null==msg) return null;
-		if(0==(msg=msg.trim()).length()) return null;
-		
 		HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
 		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(recordMap));
 		if(null==sqlMapper) return null;
@@ -143,7 +136,7 @@ public class SqlService {
 			return batchSend(batchMap);
 		}
 		
-		if(0==(msg=msg.trim()).length()) return null;
+		if((msg=msg.trim()).isEmpty()) return null;
 		
 		HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(msg, HashMap.class);
 		SQLMapper sqlMapper=sqlConfig.getSqlMapper(getTableFullName(recordMap));
@@ -259,7 +252,7 @@ public class SqlService {
 	 * @return 集合表包装器
 	 */
 	private String getTableFullName(List<Object> record) {
-		if(null==record || 0==record.size()) return null;
+		if(null==record || record.isEmpty()) return null;
 		
 		int dbIndex=-1;
 		int tabIndex=-1;
@@ -311,7 +304,7 @@ public class SqlService {
 	 * @return 集合表包装器
 	 */
 	private String getTableFullName(Map<String,Object> recordMap) {
-		if(null==recordMap || 0==recordMap.size()) return null;
+		if(null==recordMap || recordMap.isEmpty()) return null;
 		
 		String dbName=sqlConfig.defaultDB;
 		if(null!=sqlConfig.dbField) {
@@ -352,7 +345,6 @@ public class SqlService {
 	 */
 	private static final boolean isEmpty(String value) {
 		if(null==value) return true;
-		String valueStr=value.trim();
-		return 0==valueStr.length();
+		return value.trim().isEmpty();
 	}
 }

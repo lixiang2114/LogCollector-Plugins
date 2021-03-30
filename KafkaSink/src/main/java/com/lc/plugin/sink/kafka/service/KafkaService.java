@@ -58,7 +58,7 @@ public class KafkaService {
 	 * @throws InterruptedException
 	 */
 	public boolean preSend() throws InterruptedException {
-		if(0==kafkaConfig.preFailSinkSet.size())  return true;
+		if(kafkaConfig.preFailSinkSet.isEmpty())  return true;
 		for(Object object:kafkaConfig.preFailSinkSet) {
 			producer.send((ProducerRecord<String,String>)object, kafkaHandler);
 			if(!kafkaHandler.isSuccess) return false;
@@ -128,7 +128,7 @@ public class KafkaService {
 			HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(line, HashMap.class);
 			String topic=(String)recordMap.remove(config.getTopicField());
 			String record=CommonUtil.javaToJsonStr(recordMap);
-			if(isEmpty(topic)) {
+			if(null==topic || topic.trim().isEmpty()) {
 				retArr[0]=config.getDefaultTopic();
 				retArr[1]=record.trim();
 				return retArr;
@@ -138,15 +138,5 @@ public class KafkaService {
 			retArr[1]=record.trim();
 			return retArr;
 		}
-	}
-	
-	/**
-	 * 字符串是否为空
-	 * @param value 字串值
-	 * @return 是否为空
-	 */
-	private static final boolean isEmpty(String value){
-		if(null==value) return true;
-		return 0==value.trim().length();
 	}
 }

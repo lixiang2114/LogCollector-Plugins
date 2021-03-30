@@ -43,4 +43,4 @@ unzip  /install/zip/mqttSink.zip -d /software/LogCollector-2.0/plugins/
 1. MQTT服务器是否可以被匿名访问取决于服务器的类型，如果服务器支持则可以设置为免密登录模式。
 2. 当tokenExpire为NULL时，expireFactor默认值为750，当tokenExpire为-1时，expireFactor默认值为1000。
 3. MemoryPersistence类的全类名是：org.eclipse.paho.client.mqttv3.persist.MemoryPersistence.MemoryPersistence，除了可以基于内存持久化，可选的持久化方式还有磁盘。
-4. fieldSeparator参数的默认值是英文逗号，这与常规的Sink插件设计有区别，因为MqttSink插件只需要区分主题字段即可，并且以记录中首次出现的分隔符为准来分隔主题字段。  
+4. fieldSeparator参数的默认值是英文逗号，一般针对消息中间件的Sink插件只需要区分主题字段即可，并且以记录中首次出现的分隔符为准来分隔主题字段，所以默认使用英文逗号即可；而对于针对存储或数据库的Sink插件由于需要区分过多的机构化字段，故默认使用空白字符。  

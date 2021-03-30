@@ -98,12 +98,12 @@ public class MqttConfig {
 	 * 字段分隔符
 	 * 默认值为英文逗号
 	 */
-	private String fieldSeparator=",";
+	private String fieldSeparator;
 	
 	/**
 	 * 主题字段名称
 	 */
-	private String topicField="topic";
+	private String topicField;
 	
 	/**
 	 * 根证书文件
@@ -129,11 +129,6 @@ public class MqttConfig {
 	 * 携带Token的字段名
 	 */
 	private String tokenFrom;
-	
-	/**
-	 * 批处理尺寸
-	 */
-//	private Integer batchSize;
 	
 	/**
 	 * Token过期时间
@@ -280,7 +275,7 @@ public class MqttConfig {
 	}
 	
 	public String getTopicField(){
-		return topicField;
+		return null==topicField?"topic":topicField;
 	}
 	
 	public int getTopicIndex(){
@@ -292,7 +287,7 @@ public class MqttConfig {
 	}
 	
 	public String getFieldSeparator() {
-		return fieldSeparator;
+		return null==fieldSeparator?",":fieldSeparator;
 	}
 	
 	public String getDefaultTopic() {
@@ -402,10 +397,10 @@ public class MqttConfig {
 		this.userName=userNameStr.isEmpty()?null:userNameStr;
 		this.tokenFrom=tokenFromStr.isEmpty()?null:tokenFromStr;
 		this.defaultTopic=defaultTopicStr.isEmpty()?null:defaultTopicStr;
-		this.parse=parseStr.isEmpty()?null:Boolean.parseBoolean(parseStr);
+		this.parse=parseStr.isEmpty()?true:Boolean.parseBoolean(parseStr);
 		this.fieldSeparator=fieldSeparatorStr.isEmpty()?null:fieldSeparatorStr;
 		this.retained=retainedStr.isEmpty()?null:Boolean.parseBoolean(retainedStr);
-		this.topicIndex=topicIndexStr.isEmpty()?null:Integer.parseInt(topicIndexStr);
+		this.topicIndex=topicIndexStr.isEmpty()?0:Integer.parseInt(topicIndexStr);
 		this.maxInflight=maxInflightStr.isEmpty()?null:Integer.parseInt(maxInflightStr);
 		this.clientCaPassword=clientCaPasswordStr.isEmpty()?null:clientCaPasswordStr;
 		this.tokenExpire=tokenExpireStr.isEmpty()?null:Integer.parseInt(tokenExpireStr);

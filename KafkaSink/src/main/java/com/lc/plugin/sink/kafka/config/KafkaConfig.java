@@ -53,6 +53,11 @@ public class KafkaConfig {
 	private int topicIndex=0;
 	
 	/**
+	 * 主题字段名称
+	 */
+	private String topicField;
+	
+	/**
 	 * Kafka客户端配置
 	 */
 	private Properties config;
@@ -63,6 +68,12 @@ public class KafkaConfig {
 	private String defaultTopic;
 	
 	/**
+	 * 字段分隔符
+	 * 默认值为英文逗号
+	 */
+	private String fieldSeparator;
+	
+	/**
 	 * 发送失败后最大重试次数
 	 */
 	private String maxRetryTimes;
@@ -71,17 +82,6 @@ public class KafkaConfig {
 	 * 管理客户端
 	 */
 	public AdminClient adminClient;
-	
-	/**
-	 * 字段分隔符
-	 * 默认值为英文逗号
-	 */
-	private String fieldSeparator=",";
-	
-	/**
-	 * 主题字段名称
-	 */
-	private String topicField="topic";
 	
 	/**
 	 * 是否可以自动创建主题
@@ -179,71 +179,28 @@ public class KafkaConfig {
 	 * @param config
 	 */
 	public KafkaConfig config() {
-		String parseStr=config.getProperty("parse");
-		String hostStr=config.getProperty("hostList");
-		String ackLevelStr=config.getProperty("ackLevel");
-		String topicFieldStr=config.getProperty("topicField");
-		String topicIndexStr=config.getProperty("topicIndex");
-		String defaultTopicStr=config.getProperty("defaultTopic");
-		String fieldSeparatorStr=config.getProperty("fieldSeparator");
-		String maxRetryTimesStr=config.getProperty("maxRetryTimes");
-		String autoCreateTopicStr=config.getProperty("autoCreateTopic");
-		String partitionNumPerTopicStr=config.getProperty("partitionNumPerTopic");
+		String parseStr=config.getProperty("parse","").trim();
+		String hostStr=config.getProperty("hostList","").trim();
+		String ackLevelStr=config.getProperty("ackLevel","").trim();
+		String topicFieldStr=config.getProperty("topicField","").trim();
+		String topicIndexStr=config.getProperty("topicIndex","").trim();
+		String defaultTopicStr=config.getProperty("defaultTopic","").trim();
+		String fieldSeparatorStr=config.getProperty("fieldSeparator","").trim();
+		String maxRetryTimesStr=config.getProperty("maxRetryTimes","").trim();
+		String autoCreateTopicStr=config.getProperty("autoCreateTopic","").trim();
+		String partitionNumPerTopicStr=config.getProperty("partitionNumPerTopic","").trim();
 		
-		if(null!=parseStr) {
-			String parsess=parseStr.trim();
-			if(!parsess.isEmpty()) parse=Boolean.parseBoolean(parsess);
-		}
+		this.ackLevel=ackLevelStr.isEmpty()?"1":ackLevelStr;
+		this.topicField=topicFieldStr.isEmpty()?"topic":topicFieldStr;
+		this.defaultTopic=defaultTopicStr.isEmpty()?null:defaultTopicStr;
+		this.parse=parseStr.isEmpty()?true:Boolean.parseBoolean(parseStr);
+		this.fieldSeparator=fieldSeparatorStr.isEmpty()?",":fieldSeparatorStr;
+		this.maxRetryTimes=maxRetryTimesStr.isEmpty()?"3":maxRetryTimesStr;
+		this.topicIndex=topicIndexStr.isEmpty()?0:Integer.parseInt(topicIndexStr);
+		this.autoCreateTopic=autoCreateTopicStr.isEmpty()?true:Boolean.parseBoolean(autoCreateTopicStr);
+		this.partitionNumPerTopic=partitionNumPerTopicStr.isEmpty()?1:Integer.parseInt(partitionNumPerTopicStr);
 		
-		if(null!=defaultTopicStr) {
-			String topicss=defaultTopicStr.trim();
-			if(!topicss.isEmpty()) defaultTopic=topicss;
-		}
-		
-		if(null!=topicFieldStr) {
-			String topicFieldss=topicFieldStr.trim();
-			if(!topicFieldss.isEmpty()) topicField=topicFieldss;
-		}
-		
-		if(null!=fieldSeparatorStr) {
-			String fieldSeparatorss=fieldSeparatorStr.trim();
-			if(!fieldSeparatorss.isEmpty()) fieldSeparator=fieldSeparatorss;
-		}
-		
-		if(null==maxRetryTimesStr) {
-			maxRetryTimes="3";
-		}else{
-			String maxRetryTimess=maxRetryTimesStr.trim();
-			maxRetryTimes=maxRetryTimess.isEmpty()?"3":maxRetryTimess;
-		}
-		
-		if(null==ackLevelStr) {
-			ackLevel="1";
-		}else{
-			String ackLevelStrss=ackLevelStr.trim();
-			ackLevel=ackLevelStrss.isEmpty()?"1":ackLevelStrss;
-		}
-		
-		if(null!=topicIndexStr) {
-			String topicIndexss=topicIndexStr.trim();
-			if(!topicIndexss.isEmpty()) topicIndex=Integer.parseInt(topicIndexss);
-		}
-		
-		if(null==autoCreateTopicStr) {
-			autoCreateTopic=true;
-		}else{
-			String autoCreateTopicStrss=autoCreateTopicStr.trim();
-			autoCreateTopic=autoCreateTopicStrss.isEmpty()?true:Boolean.parseBoolean(autoCreateTopicStrss);
-		}
-		
-		if(null==partitionNumPerTopicStr) {
-			partitionNumPerTopic=1;
-		}else{
-			String partitionNumPerTopicStrss=partitionNumPerTopicStr.trim();
-			partitionNumPerTopic=partitionNumPerTopicStrss.isEmpty()?1:Integer.parseInt(partitionNumPerTopicStrss);
-		}
-		
-		configHostAddress(null==hostStr?"":hostStr.trim());
+		configHostAddress(hostStr);
 		configKafKaClient(maxRetryTimes,ackLevel);
 		
 		return this;
@@ -251,7 +208,8 @@ public class KafkaConfig {
 	
 	/**
 	 * 初始化Kafka服务客户端
-	 * @param hosts 主机地址
+	 * @param maxRetries 最大重试次数
+	 * @param ackLevel ACK确认级别
 	 */
 	private void configKafKaClient(String maxRetries,String ackLevel) {
 		Properties props = new Properties();
@@ -272,7 +230,7 @@ public class KafkaConfig {
 	 * @param hosts 主机地址
 	 */
 	private void configHostAddress(String hosts) {
-		String hostStr=!hosts.isEmpty()?hosts:(DEFAULT_HOST+":"+DEFAULT_PORT);
+		String hostStr=hosts.isEmpty()?(DEFAULT_HOST+":"+DEFAULT_PORT):hosts;
 		ArrayList<String> tmpList=new ArrayList<String>();
 		String[] hostArray=COMMA_REGEX.split(hostStr);
 		for(int i=0;i<hostArray.length;i++){

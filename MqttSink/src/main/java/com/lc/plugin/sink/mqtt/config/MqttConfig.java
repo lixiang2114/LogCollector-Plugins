@@ -133,7 +133,7 @@ public class MqttConfig {
 	/**
 	 * 批处理尺寸
 	 */
-	private Integer batchSize;
+//	private Integer batchSize;
 	
 	/**
 	 * Token过期时间
@@ -312,10 +312,6 @@ public class MqttConfig {
 		return null==retained?false:retained;
 	}
 	
-	public Integer getBatchSize() {
-		return null==batchSize?100:batchSize;
-	}
-	
 	public Integer getMaxInflight() {
 		return null==maxInflight?10:maxInflight;
 	}
@@ -369,183 +365,70 @@ public class MqttConfig {
 	/**
 	 * @param config
 	 */
-	public void config() {
-		String qosStr=config.getProperty("qos");
-		String parseStr=config.getProperty("parse");
-		String hostStr=config.getProperty("hostList");
-		String batchStr=config.getProperty("batchSize");
-		String retainedStr=config.getProperty("retained");
-		String jwtSecretStr=config.getProperty("jwtSecret");
-		String topicFieldStr=config.getProperty("topicField");
-		String topicIndexStr=config.getProperty("topicIndex");
-		String passWordStr=config.getProperty("passWord");
-		String rootCaFileStr=config.getProperty("rootCaFile");
-		String userNameStr=config.getProperty("userName");
-		String protocolStr=config.getProperty("protocolType");
-		String tokenFromStr=config.getProperty("tokenFrom");
-		String maxInflightStr=config.getProperty("maxInflight");
-		String clientCaFileStr=config.getProperty("clientCaFile");
-		String tokenExpireStr=config.getProperty("tokenExpire");
-		String defaultTopicStr=config.getProperty("defaultTopic");
-		String expireFactorStr=config.getProperty("expireFactor");
-		String clientKeyFileStr=config.getProperty("clientKeyFile");
-		String cleanSessionStr=config.getProperty("cleanSession");
-		String persistenceStr=config.getProperty("persistenceType");
-		String fieldSeparatorStr=config.getProperty("fieldSeparator");
-		String maxRetryTimesStr=config.getProperty("maxRetryTimes");
-		String failMaxWaitMillStr=config.getProperty("failMaxWaitMills");
-		String keepAliveIntervalStr=config.getProperty("keepAliveInterval");
-		String clientCaPasswordStr=config.getProperty("clientCaPassword");
-		String connectionTimeoutStr=config.getProperty("connectionTimeout");
-		String automaticReconnectStr=config.getProperty("automaticReconnect");
+	public MqttConfig config() {
+		String qosStr=config.getProperty("qos","").trim();
+		String parseStr=config.getProperty("parse","").trim();
+		String hostStr=config.getProperty("hostList","").trim();
+		String retainedStr=config.getProperty("retained","").trim();
+		String jwtSecretStr=config.getProperty("jwtSecret","").trim();
+		String topicFieldStr=config.getProperty("topicField","").trim();
+		String topicIndexStr=config.getProperty("topicIndex","").trim();
+		String passWordStr=config.getProperty("passWord","").trim();
+		String rootCaFileStr=config.getProperty("rootCaFile","").trim();
+		String userNameStr=config.getProperty("userName","").trim();
+		String protocolStr=config.getProperty("protocolType","").trim();
+		String tokenFromStr=config.getProperty("tokenFrom","").trim();
+		String maxInflightStr=config.getProperty("maxInflight","").trim();
+		String clientCaFileStr=config.getProperty("clientCaFile","").trim();
+		String tokenExpireStr=config.getProperty("tokenExpire","").trim();
+		String defaultTopicStr=config.getProperty("defaultTopic","").trim();
+		String expireFactorStr=config.getProperty("expireFactor","").trim();
+		String clientKeyFileStr=config.getProperty("clientKeyFile","").trim();
+		String cleanSessionStr=config.getProperty("cleanSession","").trim();
+		String persistenceStr=config.getProperty("persistenceType","").trim();
+		String fieldSeparatorStr=config.getProperty("fieldSeparator","").trim();
+		String maxRetryTimesStr=config.getProperty("maxRetryTimes","").trim();
+		String failMaxWaitMillStr=config.getProperty("failMaxWaitMills","").trim();
+		String keepAliveIntervalStr=config.getProperty("keepAliveInterval","").trim();
+		String clientCaPasswordStr=config.getProperty("clientCaPassword","").trim();
+		String connectionTimeoutStr=config.getProperty("connectionTimeout","").trim();
+		String automaticReconnectStr=config.getProperty("automaticReconnect","").trim();
 		
-		if(null!=qosStr) {
-			String qoss=qosStr.trim();
-			if(0!=qoss.length()) qos=Integer.parseInt(qoss);
+		this.qos=qosStr.isEmpty()?null:new Integer(qosStr);
+		this.jwtSecret=jwtSecretStr.isEmpty()?null:jwtSecretStr;
+		this.topicField=topicFieldStr.isEmpty()?null:topicFieldStr;
+		this.passWord=passWordStr.isEmpty()?null:passWordStr;
+		this.protocolType=protocolStr.isEmpty()?null:protocolStr;
+		this.userName=userNameStr.isEmpty()?null:userNameStr;
+		this.tokenFrom=tokenFromStr.isEmpty()?null:tokenFromStr;
+		this.defaultTopic=defaultTopicStr.isEmpty()?null:defaultTopicStr;
+		this.parse=parseStr.isEmpty()?null:Boolean.parseBoolean(parseStr);
+		this.fieldSeparator=fieldSeparatorStr.isEmpty()?null:fieldSeparatorStr;
+		this.retained=retainedStr.isEmpty()?null:Boolean.parseBoolean(retainedStr);
+		this.topicIndex=topicIndexStr.isEmpty()?null:Integer.parseInt(topicIndexStr);
+		this.maxInflight=maxInflightStr.isEmpty()?null:Integer.parseInt(maxInflightStr);
+		this.clientCaPassword=clientCaPasswordStr.isEmpty()?null:clientCaPasswordStr;
+		this.tokenExpire=tokenExpireStr.isEmpty()?null:Integer.parseInt(tokenExpireStr);
+		this.expireFactor=expireFactorStr.isEmpty()?null:Integer.parseInt(expireFactorStr);
+		this.rootCaFile=rootCaFileStr.isEmpty()?null:new File(sinkPath,"certs/"+rootCaFileStr);
+		this.maxRetryTimes=maxRetryTimesStr.isEmpty()?3:Integer.parseInt(maxRetryTimesStr);
+		this.cleanSession=cleanSessionStr.isEmpty()?null:Boolean.parseBoolean(cleanSessionStr);
+		this.clientCaFile=clientCaFileStr.isEmpty()?null:new File(sinkPath,"certs/"+clientCaFileStr);
+		this.clientKeyFile=clientKeyFileStr.isEmpty()?null:new File(sinkPath,"certs/"+clientKeyFileStr);
+		this.failMaxWaitMills=failMaxWaitMillStr.isEmpty()?2000L:Long.parseLong(failMaxWaitMillStr);
+		this.keepAliveInterval=keepAliveIntervalStr.isEmpty()?null:Integer.parseInt(keepAliveIntervalStr);
+		this.connectionTimeout=connectionTimeoutStr.isEmpty()?null:Integer.parseInt(connectionTimeoutStr);
+		this.automaticReconnect=automaticReconnectStr.isEmpty()?null:Boolean.parseBoolean(automaticReconnectStr);
+		try {
+			this.persistenceType=persistenceStr.isEmpty()?null:(MqttClientPersistence)Class.forName(persistenceStr).newInstance();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		
-		if(null!=parseStr) {
-			String parsess=parseStr.trim();
-			if(0!=parsess.length()) parse=Boolean.parseBoolean(parsess);
-		}
-		
-		if(null!=defaultTopicStr) {
-			String topicss=defaultTopicStr.trim();
-			if(0!=topicss.length()) defaultTopic=topicss;
-		}
-		
-		if(null!=jwtSecretStr) {
-			String secret=jwtSecretStr.trim();
-			if(0!=secret.length()) jwtSecret=secret;
-		}
-		
-		if(null!=topicFieldStr) {
-			String topicFieldss=topicFieldStr.trim();
-			if(0!=topicFieldss.length()) topicField=topicFieldss;
-		}
-		
-		if(null!=topicIndexStr) {
-			String topicIndexss=topicIndexStr.trim();
-			if(0!=topicIndexss.length()) topicIndex=Integer.parseInt(topicIndexss);
-		}
-		
-		if(null!=fieldSeparatorStr) {
-			String fieldSeparatorss=fieldSeparatorStr.trim();
-			if(0!=fieldSeparatorss.length()) fieldSeparator=fieldSeparatorss;
-		}
-		
-		if(null!=passWordStr) {
-			String pass=passWordStr.trim();
-			if(0!=pass.length()) passWord=pass;
-		}
-		
-		if(null!=userNameStr) {
-			String user=userNameStr.trim();
-			if(0!=user.length()) userName=user;
-		}
-		
-		if(null!=tokenFromStr) {
-			String from=tokenFromStr.trim();
-			if(0!=from.length()) tokenFrom=from;
-		}
-		
-		if(null!=protocolStr) {
-			String protocols=protocolStr.trim();
-			if(0!=protocols.length()) protocolType=protocols;
-		}
-		
-		if(null!=batchStr) {
-			String batchs=batchStr.trim();
-			if(0!=batchs.length()) batchSize=Integer.parseInt(batchs);
-		}
-		
-		if(null!=tokenExpireStr) {
-			String expire=tokenExpireStr.trim();
-			if(0!=expire.length()) tokenExpire=Integer.parseInt(expire);
-		}
-		
-		if(null!=expireFactorStr) {
-			String factor=expireFactorStr.trim();
-			if(0!=factor.length()) expireFactor=Integer.parseInt(factor);
-		}
-		
-		if(null!=retainedStr) {
-			String retainedss=retainedStr.trim();
-			if(0!=retainedss.length()) retained=Boolean.parseBoolean(retainedss);
-		}
-		
-		if(null!=maxInflightStr) {
-			String maxInflights=maxInflightStr.trim();
-			if(0!=maxInflights.length()) maxInflight=Integer.parseInt(maxInflights);
-		}
-		
-		if(null!=clientCaPasswordStr) {
-			String clientCaPasswords=clientCaPasswordStr.trim();
-			if(0!=clientCaPasswords.length()) clientCaPassword=clientCaPasswords;
-		}
-		
-		if(null!=rootCaFileStr) {
-			String rootCaFiles=rootCaFileStr.trim();
-			if(0!=rootCaFiles.length()) rootCaFile=new File(sinkPath,"certs/"+rootCaFiles);
-		}
-		
-		if(null!=clientCaFileStr) {
-			String clientCaFiles=clientCaFileStr.trim();
-			if(0!=clientCaFiles.length()) clientCaFile=new File(sinkPath,"certs/"+clientCaFiles);
-		}
-		
-		if(null!=cleanSessionStr) {
-			String cleanSessions=cleanSessionStr.trim();
-			if(0!=cleanSessions.length()) cleanSession=Boolean.parseBoolean(cleanSessions);
-		}
-		
-		if(null!=clientKeyFileStr) {
-			String clientKeyFiles=clientKeyFileStr.trim();
-			if(0!=clientKeyFiles.length()) clientKeyFile=new File(sinkPath,"certs/"+clientKeyFiles);
-		}
-		
-		if(null==maxRetryTimesStr) {
-			maxRetryTimes=3;
-		}else{
-			String maxRetryTimess=maxRetryTimesStr.trim();
-			maxRetryTimes=0==maxRetryTimess.length()?3:Integer.parseInt(maxRetryTimess);
-		}
-		
-		if(null==failMaxWaitMillStr) {
-			failMaxWaitMills=2000L;
-		}else{
-			String failMaxWaitMillss=failMaxWaitMillStr.trim();
-			failMaxWaitMills=0==failMaxWaitMillss.length()?2000L:Long.parseLong(failMaxWaitMillss);
-		}
-		
-		if(null!=keepAliveIntervalStr) {
-			String keepAliveIntervals=keepAliveIntervalStr.trim();
-			if(0!=keepAliveIntervals.length()) keepAliveInterval=Integer.parseInt(keepAliveIntervals);
-		}
-		
-		if(null!=connectionTimeoutStr) {
-			String connectionTimeouts=connectionTimeoutStr.trim();
-			if(0!=connectionTimeouts.length()) connectionTimeout=Integer.parseInt(connectionTimeouts);
-		}
-		
-		if(null!=automaticReconnectStr) {
-			String automaticReconnects=automaticReconnectStr.trim();
-			if(0!=automaticReconnects.length()) automaticReconnect=Boolean.parseBoolean(automaticReconnects);
-		}
-		
-		if(null!=persistenceStr) {
-			String persistenceStrs=persistenceStr.trim();
-			if(0!=persistenceStrs.length()) {
-				try {
-					persistenceType=(MqttClientPersistence)Class.forName(persistenceStrs).newInstance();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		
-		configHostAddress(null==hostStr?"":hostStr.trim());
+		configHostAddress(hostStr);
 		configMqttClientOptions();
+		
+		return this;
 	}
 	
 	/**
@@ -555,13 +438,13 @@ public class MqttConfig {
 	private void configHostAddress(String hosts){
 		String protocolType=getProtocolType()+"://";
 		String defaultPort="ssl://".equals(protocolType)?DEFAULT_SSL_PORT:DEFAULT_TCP_PORT;
-		String hostStr=0!=hosts.length()?hosts:(DEFAULT_HOST+":"+defaultPort);
+		String hostStr=hosts.isEmpty()?(DEFAULT_HOST+":"+defaultPort):hosts;
 		
 		ArrayList<String> tmpList=new ArrayList<String>();
 		String[] hostArray=COMMA_REGEX.split(hostStr);
-		for(int i=0;i<hostArray.length;i++){
+		for(int i=0;i<hostArray.length;i++) {
 			String host=hostArray[i].trim();
-			if(0==host.length()) continue;
+			if(host.isEmpty()) continue;
 			String[] ipAndPort=COLON_REGEX.split(host);
 			if(ipAndPort.length>=2){
 				String ip=ipAndPort[0].trim();
@@ -625,19 +508,17 @@ public class MqttConfig {
 		try {
 			token=new Token(jwtSecret, getTokenExpire(), getUserName(), getExpireFactor());
 		} catch (Exception e) {
+			log.error("create token instance failure:",e);
 			throw new RuntimeException(e);
 		}
-		
-		if(null==token) throw new RuntimeException("ERROR: Token instance is NULL!!!");
 		
 		String tokenStr=null;
 		try {
 			tokenStr=token.getToken();
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("get token value occur error: ",e);
+			throw new RuntimeException("get token value occur error...");
 		}
-		
-		if(null==tokenStr) throw new RuntimeException("ERROR: Token value is NULL!!!");
 		
 		if("username".equalsIgnoreCase(getTokenFrom())) {
 			userName=tokenStr;
@@ -745,7 +626,6 @@ public class MqttConfig {
 		map.put("parse", parse);
 		map.put("retained", retained);
 		map.put("jwtSecret", jwtSecret);
-		map.put("batchSize", batchSize);
 		map.put("topicField", topicField);
 		map.put("topicIndex", topicIndex);
 		map.put("rootCaFile", rootCaFile);

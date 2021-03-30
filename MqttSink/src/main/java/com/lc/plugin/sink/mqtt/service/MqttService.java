@@ -1,6 +1,6 @@
 package com.lc.plugin.sink.mqtt.service;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
@@ -46,7 +46,7 @@ public class MqttService {
 	 * @throws InterruptedException
 	 */
 	public boolean preSend() throws InterruptedException {
-		if(0==mqttConfig.preFailSinkSet.size())  return true;
+		if(mqttConfig.preFailSinkSet.isEmpty())  return true;
 		for(Object object:mqttConfig.preFailSinkSet) {
 			TopicMapper topicMapper=(TopicMapper)object;
 			topicMapper.setMqttConfig(mqttConfig);
@@ -63,11 +63,8 @@ public class MqttService {
 	 * @throws InterruptedException
 	 */
 	public Boolean sendMsg(String msg) throws InterruptedException{
-		if(null==msg) return null;
-		if(0==(msg=msg.trim()).length()) return null;
 		String[] topicAndMsg=parseMsg(msg,mqttConfig);
-		
-		MqttMessage message = new MqttMessage(topicAndMsg[1].getBytes(Charset.forName("UTF-8")));
+		MqttMessage message = new MqttMessage(topicAndMsg[1].getBytes(StandardCharsets.UTF_8));
 		message.setRetained(mqttConfig.getRetained());
 		message.setQos(mqttConfig.getQos());
 		
@@ -121,7 +118,7 @@ public class MqttService {
 			HashMap<String,Object> recordMap=CommonUtil.jsonStrToJava(line, HashMap.class);
 			String topic=(String)recordMap.remove(config.getTopicField());
 			String record=CommonUtil.javaToJsonStr(recordMap);
-			if(isEmpty(topic)) {
+			if(null==topic || topic.trim().isEmpty()) {
 				retArr[0]=config.getDefaultTopic();
 				retArr[1]=record.trim();
 				return retArr;
@@ -131,15 +128,5 @@ public class MqttService {
 			retArr[1]=record.trim();
 			return retArr;
 		}
-	}
-	
-	/**
-	 * 字符串是否为空
-	 * @param value 字串值
-	 * @return 是否为空
-	 */
-	private static final boolean isEmpty(String value){
-		if(null==value) return true;
-		return 0==value.trim().length();
 	}
 }

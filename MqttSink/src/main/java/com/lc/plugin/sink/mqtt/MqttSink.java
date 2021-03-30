@@ -45,8 +45,7 @@ public class MqttSink extends SinkPluginAdapter{
 			return false;
 		}
 		
-		this.mqttConfig=new MqttConfig(flow);
-		mqttConfig.config();
+		this.mqttConfig=new MqttConfig(flow).config();
 		
 		mqttConfig.connectMqttServer();
 		this.mqttService=new MqttService(mqttConfig);
@@ -77,6 +76,7 @@ public class MqttSink extends SinkPluginAdapter{
 			String message=null;
 			while(flow.sinkStart) {
 				if(null==(message=filterToSinkChannel.get())) continue;
+				if((message=message.trim()).isEmpty()) continue;
 				Boolean flag=mqttService.sendMsg(message);
 				if(null!=flag && !flag) return false;
 			}

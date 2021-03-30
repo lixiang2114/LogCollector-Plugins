@@ -1,9 +1,8 @@
 package com.lc.plugin.sink.mqtt.config;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
 import java.nio.file.Files;
 import java.security.KeyFactory;
 import java.security.KeyStore;
@@ -120,16 +119,16 @@ public class TLSConfig {
      */
     public static RSAPrivateKey getPrivateKey(File keyFile) throws Exception {
     	 String line=null;
-    	 LineNumberReader lnr=null;
+    	 BufferedReader bufferedReader=null;
          StringBuilder builder=new StringBuilder();
          try{
-             lnr = new LineNumberReader(new InputStreamReader(Files.newInputStream(keyFile.toPath())));
-             while ((line = lnr.readLine()) != null) {
+        	 bufferedReader=Files.newBufferedReader(keyFile.toPath());
+             while ((line = bufferedReader.readLine()) != null) {
                  if (line.charAt(0) == '-') continue;
                  builder.append(line).append("\r");
              }
          }finally{
-        	 if(null!=lnr) lnr.close();
+        	 if(null!=bufferedReader) bufferedReader.close();
          }
          
         byte[] buffer = new Base64().decode(builder.toString());

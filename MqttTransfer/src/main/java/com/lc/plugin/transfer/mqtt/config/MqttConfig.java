@@ -372,21 +372,21 @@ public class MqttConfig {
 		String connectionTimeoutStr=config.getProperty("connectionTimeout","").trim();
 		String automaticReconnectStr=config.getProperty("automaticReconnect","").trim();
 		
-		this.qos=qosStr.isEmpty()?null:new Integer(qosStr);
 		this.topic=topicStr.isEmpty()?null:topicStr;
+		this.qos=qosStr.isEmpty()?null:new Integer(qosStr);
 		this.jwtSecret=jwtSecretStr.isEmpty()?null:jwtSecretStr;
 		this.passWord=passWordStr.isEmpty()?null:passWordStr;
+		this.protocolType=protocolStr.isEmpty()?null:protocolStr;
 		this.userName=userNameStr.isEmpty()?null:userNameStr;
 		this.tokenFrom=tokenFromStr.isEmpty()?null:tokenFromStr;
-		this.protocolType=protocolStr.isEmpty()?null:protocolStr;
-		this.tokenExpire=tokenExpireStr.isEmpty()?null:Integer.parseInt(tokenExpireStr);
-		this.expireFactor=expireFactorStr.isEmpty()?null:Integer.parseInt(expireFactorStr);
 		this.retained=retainedStr.isEmpty()?null:Boolean.parseBoolean(retainedStr);
 		this.maxInflight=maxInflightStr.isEmpty()?null:Integer.parseInt(maxInflightStr);
 		this.clientCaPassword=clientCaPasswordStr.isEmpty()?null:clientCaPasswordStr;
+		this.tokenExpire=tokenExpireStr.isEmpty()?null:Integer.parseInt(tokenExpireStr);
+		this.expireFactor=expireFactorStr.isEmpty()?null:Integer.parseInt(expireFactorStr);
 		this.rootCaFile=rootCaFileStr.isEmpty()?null:new File(pluginPath,"certs/"+rootCaFileStr);
-		this.clientCaFile=clientCaFileStr.isEmpty()?null:new File(pluginPath,"certs/"+clientCaFileStr);
 		this.cleanSession=cleanSessionStr.isEmpty()?null:Boolean.parseBoolean(cleanSessionStr);
+		this.clientCaFile=clientCaFileStr.isEmpty()?null:new File(pluginPath,"certs/"+clientCaFileStr);
 		this.clientKeyFile=clientKeyFileStr.isEmpty()?null:new File(pluginPath,"certs/"+clientKeyFileStr);
 		this.keepAliveInterval=keepAliveIntervalStr.isEmpty()?null:Integer.parseInt(keepAliveIntervalStr);
 		this.connectionTimeout=connectionTimeoutStr.isEmpty()?null:Integer.parseInt(connectionTimeoutStr);
@@ -480,7 +480,7 @@ public class MqttConfig {
 		try {
 			token=new Token(jwtSecret, getTokenExpire(), getUserName(), getExpireFactor());
 		} catch (Exception e) {
-			log.error("create token failure:",e);
+			log.error("create token instance failure:",e);
 			throw new RuntimeException(e);
 		}
 		

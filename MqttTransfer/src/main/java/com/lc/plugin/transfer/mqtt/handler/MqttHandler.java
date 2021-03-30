@@ -2,10 +2,9 @@ package com.lc.plugin.transfer.mqtt.handler;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
@@ -40,8 +39,8 @@ public class MqttHandler implements MqttCallbackExtended{
 	public MqttHandler(MqttConfig mqttConfig){
 		this.mqttConfig=mqttConfig;
 		try {
-			bufferedWriter=new BufferedWriter(new OutputStreamWriter(new FileOutputStream(mqttConfig.transferSaveFile,true)));
-		} catch (FileNotFoundException e) {
+			bufferedWriter=Files.newBufferedWriter(mqttConfig.transferSaveFile.toPath(), StandardOpenOption.CREATE,StandardOpenOption.APPEND);
+		} catch (IOException e) {
 			log.error("transferSaveFile is not exists: ",e);
 		}
 	}
@@ -65,6 +64,10 @@ public class MqttHandler implements MqttCallbackExtended{
 		//当前转存日志文件达到最大值则增加转存日志文件
 		String curTransSaveFilePath=mqttConfig.transferSaveFile.getAbsolutePath();
 		int lastIndex=curTransSaveFilePath.lastIndexOf(".");
+		if(-1==lastIndex) {
+			lastIndex=curTransSaveFilePath.length();
+			curTransSaveFilePath=curTransSaveFilePath+".0";
+		}
 		mqttConfig.transferSaveFile=new File(curTransSaveFilePath.substring(0,lastIndex+1)+(Integer.parseInt(curTransSaveFilePath.substring(lastIndex+1))+1));
 		log.info("MqttTransfer switch transfer save log file to: "+mqttConfig.transferSaveFile.getAbsolutePath());
 		
@@ -74,7 +77,7 @@ public class MqttHandler implements MqttCallbackExtended{
 			log.error("close transferSaveFile stream occur error: ",e);
 		}
 		
-		bufferedWriter=new BufferedWriter(new OutputStreamWriter(new FileOutputStream(mqttConfig.transferSaveFile,true)));
+		bufferedWriter=Files.newBufferedWriter(mqttConfig.transferSaveFile.toPath(), StandardOpenOption.CREATE,StandardOpenOption.APPEND);
 	}
 
 	@Override

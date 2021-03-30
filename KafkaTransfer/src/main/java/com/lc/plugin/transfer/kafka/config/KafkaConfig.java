@@ -57,11 +57,6 @@ public class KafkaConfig {
 	private Properties config;
 	
 	/**
-	 * 批处理尺寸
-	 */
-	private Integer batchSize;
-	
-	/**
 	 * 实时转存的日志文件
 	 */
 	public File transferSaveFile;
@@ -174,83 +169,52 @@ public class KafkaConfig {
 	 * @param config
 	 */
 	public KafkaConfig config() {
-		File bufferLogFile=new File(transferPath,"buffer.log.0");
 		String transferSaveFileName=config.getProperty("transferSaveFile","").trim();
 		if(transferSaveFileName.isEmpty()) {
-			transferSaveFile=bufferLogFile;
+			transferSaveFile=new File(transferPath,"buffer.log.0");
 			log.warn("not found parameter: 'transferSaveFile',will be use default...");
 		}else{
 			File file=new File(transferSaveFileName);
-			transferSaveFile=file.exists() && file.isFile()?file:bufferLogFile;
+			if(!file.exists() || file.isFile()) transferSaveFile=file;
 		}
+		
+		if(null==transferSaveFile) {
+			log.error("transferSaveFile can not be NULL...");
+			throw new RuntimeException("transferSaveFile can not be NULL...");
+		}
+		
+		log.info("transfer save logger file is: "+transferSaveFile.getAbsolutePath());
 		
 		transferSaveMaxSize=getTransferSaveMaxSize();
 		log.info("transfer save logger file max size is: "+transferSaveMaxSize);
-		log.info("transfer save logger file is: "+transferSaveFile.getAbsolutePath());
 		
-		String topicStr=config.getProperty("topic");
-		String hostStr=config.getProperty("hostList");
-		String batchStr=config.getProperty("batchSize");
-		String autoCreateTopicStr=config.getProperty("autoCreateTopic");
-		String consumerGroupIdStr=config.getProperty("consumerGroupId");
-		String sessionTimeoutMillsStr=config.getProperty("sessionTimeoutMills");
-		String batchPollTimeoutMillStr=config.getProperty("batchPollTimeoutMills");
-		String partitionNumPerTopicStr=config.getProperty("partitionNumPerTopic");
-		String autoCommitIntervalMillsStr=config.getProperty("autoCommitIntervalMills");
-		
-		if(null!=topicStr) {
-			String topicss=topicStr.trim();
-			if(!topicss.isEmpty()) topic=topicss;
+		String topicStr=config.getProperty("topic","").trim();
+		this.topic=topicStr.isEmpty()?null:topicStr;
+		if(null==topic) {
+			log.error("topic can not be empty...");
+			throw new RuntimeException("topic can not be empty...");
 		}
 		
-		if(null!=batchStr) {
-			String batchs=batchStr.trim();
-			if(0!=batchs.length()) batchSize=Integer.parseInt(batchs);
-		}
+		String hostStr=config.getProperty("hostList","").trim();
+		String autoCreateTopicStr=config.getProperty("autoCreateTopic","").trim();
+		this.autoCreateTopic=autoCreateTopicStr.isEmpty()?true:Boolean.parseBoolean(autoCreateTopicStr);
 		
-		if(null==autoCreateTopicStr) {
-			autoCreateTopic=true;
-		}else{
-			String autoCreateTopicStrss=autoCreateTopicStr.trim();
-			autoCreateTopic=autoCreateTopicStrss.isEmpty()?true:Boolean.parseBoolean(autoCreateTopicStrss);
-		}
+		String consumerGroupIdStr=config.getProperty("consumerGroupId","").trim();
+		this.consumerGroupId=consumerGroupIdStr.isEmpty()?"lixiang2114":consumerGroupIdStr;
 		
-		if(null==partitionNumPerTopicStr) {
-			partitionNumPerTopic=1;
-		}else{
-			String partitionNumPerTopicStrss=partitionNumPerTopicStr.trim();
-			partitionNumPerTopic=partitionNumPerTopicStrss.isEmpty()?1:Integer.parseInt(partitionNumPerTopicStrss);
-		}
+		String sessionTimeoutMillsStr=config.getProperty("sessionTimeoutMills","").trim();
+		this.sessionTimeoutMills=sessionTimeoutMillsStr.isEmpty()?"30000":sessionTimeoutMillsStr;
 		
-		if(null==consumerGroupIdStr) {
-			consumerGroupId="lixiang2114";
-		}else{
-			String consumerGroupIdss=consumerGroupIdStr.trim();
-			consumerGroupId=consumerGroupIdss.isEmpty()?"lixiang2114":consumerGroupIdss;
-		}
+		String batchPollTimeoutMillStr=config.getProperty("batchPollTimeoutMills","").trim();
+		this.batchPollTimeoutMills=Duration.ofMillis(batchPollTimeoutMillStr.isEmpty()?100:Long.parseLong(batchPollTimeoutMillStr));
 		
-		if(null==sessionTimeoutMillsStr) {
-			sessionTimeoutMills="30000";
-		}else{
-			String sessionTimeoutMillss=sessionTimeoutMillsStr.trim();
-			sessionTimeoutMills=sessionTimeoutMillss.isEmpty()?"30000":sessionTimeoutMillss;
-		}
+		String partitionNumPerTopicStr=config.getProperty("partitionNumPerTopic","").trim();
+		this.partitionNumPerTopic=partitionNumPerTopicStr.isEmpty()?1:Integer.parseInt(partitionNumPerTopicStr);
 		
-		if(null==autoCommitIntervalMillsStr) {
-			autoCommitIntervalMills="1000";
-		}else{
-			String autoCommitIntervalMillss=autoCommitIntervalMillsStr.trim();
-			autoCommitIntervalMills=autoCommitIntervalMillss.isEmpty()?"1000":autoCommitIntervalMillss;
-		}
+		String autoCommitIntervalMillsStr=config.getProperty("autoCommitIntervalMills","").trim();
+		this.autoCommitIntervalMills=autoCommitIntervalMillsStr.isEmpty()?"1000":autoCommitIntervalMillsStr;
 		
-		if(null==batchPollTimeoutMillStr) {
-			batchPollTimeoutMills=Duration.ofMillis(100);
-		}else{
-			String batchPollTimeoutMillss=batchPollTimeoutMillStr.trim();
-			batchPollTimeoutMills=Duration.ofMillis(batchPollTimeoutMillss.isEmpty()?100:Long.parseLong(batchPollTimeoutMillss));
-		}
-		
-		configHostAddress(null==hostStr?"":hostStr.trim());
+		configHostAddress(hostStr);
 		configKafKaClient();
 		
 		return this;
@@ -278,7 +242,7 @@ public class KafkaConfig {
 	 * @param hosts 主机地址
 	 */
 	private void configHostAddress(String hosts) {
-		String hostStr=!hosts.isEmpty()?hosts:(DEFAULT_HOST+":"+DEFAULT_PORT);
+		String hostStr=hosts.isEmpty()?(DEFAULT_HOST+":"+DEFAULT_PORT):hosts;
 		ArrayList<String> tmpList=new ArrayList<String>();
 		String[] hostArray=COMMA_REGEX.split(hostStr);
 		for(int i=0;i<hostArray.length;i++){
@@ -313,9 +277,9 @@ public class KafkaConfig {
 	 * 获取转存日志文件最大尺寸(默认为2GB)
 	 */
 	private Long getTransferSaveMaxSize(){
-		String configMaxVal=config.getProperty("transferSaveMaxSize");
-		if(null==configMaxVal || 0==configMaxVal.trim().length()) return 2*1024*1024*1024L;
-		Matcher matcher=CAP_REGEX.matcher(configMaxVal.trim());
+		String configMaxVal=config.getProperty("transferSaveMaxSize","").trim();
+		if(configMaxVal.isEmpty()) return 2*1024*1024*1024L;
+		Matcher matcher=CAP_REGEX.matcher(configMaxVal);
 		if(!matcher.find()) return 2*1024*1024*1024L;
 		return SizeUnit.getBytes(Long.parseLong(matcher.group(1)), matcher.group(2).substring(0,1));
 	}
@@ -393,7 +357,6 @@ public class KafkaConfig {
 		HashMap<String,Object> map=new HashMap<String,Object>();
 		map.put("topic", topic);
 		map.put("hostList", hostList);
-		map.put("batchSize", batchSize);
 		map.put("transferPath", transferPath);
 		map.put("transferSaveFile", transferSaveFile);
 		map.put("autoCreateTopic", autoCreateTopic);

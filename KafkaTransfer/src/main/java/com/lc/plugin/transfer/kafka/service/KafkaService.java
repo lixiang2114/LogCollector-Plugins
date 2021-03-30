@@ -79,11 +79,13 @@ public class KafkaService {
 			 	//拉取一个批次的数据记录量
 	            ConsumerRecords<String, String> batchRecords=consumer.poll(batchTimeout);
 	            for (ConsumerRecord<String, String> record:batchRecords) {
+	            	if(null==record) continue;
+	            	
 	            	String line=record.value();
-	            	if(isEmpty(line)) continue;
+	            	if(null==line || (line=line.trim()).isEmpty()) continue;
 	            	
 	            	//写入转存日志文件
-	            	bufferedWriter.write(line.trim());
+	            	bufferedWriter.write(line);
 	            	bufferedWriter.newLine();
 	            	bufferedWriter.flush();
 	            	
@@ -93,6 +95,10 @@ public class KafkaService {
 	            	//当前转存日志文件达到最大值则增加转存日志文件
 	            	String curTransSaveFilePath=kafkaConfig.transferSaveFile.getAbsolutePath();
 	            	int lastIndex=curTransSaveFilePath.lastIndexOf(".");
+	            	if(-1==lastIndex) {
+						lastIndex=curTransSaveFilePath.length();
+						curTransSaveFilePath=curTransSaveFilePath+".0";
+					}
 	            	kafkaConfig.transferSaveFile=new File(curTransSaveFilePath.substring(0,lastIndex+1)+(Integer.parseInt(curTransSaveFilePath.substring(lastIndex+1))+1));
 	            	log.info("KafkaTransfer switch transfer save log file to: "+kafkaConfig.transferSaveFile.getAbsolutePath());
 	            	
@@ -105,15 +111,5 @@ public class KafkaService {
 	            	bufferedWriter=Files.newBufferedWriter(kafkaConfig.transferSaveFile.toPath(), StandardCharsets.UTF_8, StandardOpenOption.CREATE,StandardOpenOption.APPEND);
 	            }
 	    }
-	}
-	
-	/**
-	 * 字符串是否为空
-	 * @param value 字串值
-	 * @return 是否为空
-	 */
-	private static final boolean isEmpty(String value){
-		if(null==value) return true;
-		return value.trim().isEmpty();
 	}
 }
